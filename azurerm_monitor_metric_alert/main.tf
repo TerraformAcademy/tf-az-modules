@@ -59,12 +59,12 @@ resource "azurerm_monitor_metric_alert" "this" {
     }
   }
 
-  auto_mitigate        = var.auto_mitigate
-  description          = var.description
-  frequency            = var.frequency
-  severity             = var.severity
-  target_resource_type = var.target_resource_type
+  auto_mitigate            = var.auto_mitigate
+  description              = var.description
+  frequency                = var.frequency
+  severity                 = var.severity
+  target_resource_type     = var.target_resource_type
   target_resource_location = var.target_resource_location
-  window_size = var.window_size
-  tags = var.tags
+  window_size              = var.window_size
+  tags                     = var.tags
 }

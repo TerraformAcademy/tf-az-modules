@@ -1,5 +1,5 @@
 output "action_gprup_ids" {
-    value = local.action_group_ids  
+  value = local.action_group_ids
 }
 
 output "id" {
