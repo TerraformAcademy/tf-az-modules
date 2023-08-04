@@ -1,4 +1,4 @@
-resource "azurerm_monitor_autoscale_setting" "example" {
+resource "azurerm_monitor_autoscale_setting" "this" {
   name                = var.name
   resource_group_name = var.resource_group_name
   location            = var.location
