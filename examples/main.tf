@@ -34,6 +34,16 @@ data "azurerm_storage_account_blob_container_sas" "this" {
   }
 }
 
+data "azurerm_key_vault" "this" {
+  name = "keyvault1"
+  resource_group_name = "RSG01"  
+}
+
+data "azurerm_key_vault_secret" "password" {
+  name = "sqlpassword"
+  key_vault_id = data.azurerm_key_vault.this.id  
+}
+
 resource "azurerm_automation_runbook" "this" {
   name                    = "test"
   automation_account_name = "automation"
@@ -65,6 +75,7 @@ resource "azurerm_automation_job_schedule" "this" {
   parameters = {
     resource_group  = "rsg"
     storage_account = "strageajsdaiodu"
+    password = data.azurerm_key_vault_secret.password.value# password from keyvault. 
   }
 }
 
