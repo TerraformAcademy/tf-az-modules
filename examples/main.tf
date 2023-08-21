@@ -99,3 +99,10 @@ resource "azurerm_key_vault_access_policy" "kv-acl" {
     "Get", "List"
   ]
 }
+
+module "sqlmi" {
+  source = "./sqlmi"
+  name = ""
+  resource_group_name = ""
+  location = ""
+}
