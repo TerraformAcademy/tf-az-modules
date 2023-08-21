@@ -11,5 +11,5 @@ output "custom_dns_configs" {
 }
 
 output "private_dns_zone_configs" {
-    value = azurerm_private_endpoint.this.private_dns_zone_configs
+  value = azurerm_private_endpoint.this.private_dns_zone_configs
 }

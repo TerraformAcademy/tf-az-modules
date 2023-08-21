@@ -46,10 +46,15 @@ variable "private_service_connection" {
 }
 
 variable "ip_configuration" {
-  name               = string
-  private_ip_address = string
-  subresource_name   = optional(string, null)
-  member_name        = optional(string, null)
+  type = set(object({
+
+    name               = string
+    private_ip_address = string
+    subresource_name   = optional(string, null)
+    member_name        = optional(string, null)
+  }))
+
+  default = []
 }
 
 variable "tags" {
