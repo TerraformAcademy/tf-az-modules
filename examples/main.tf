@@ -8,101 +8,25 @@ provider "azurerm" {
   }
 }
 
-data "azurerm_subscription" "current" {
-  
+# data "azurerm_management_group" "this" {
+#   name = "root1"
+# }
+
+# output "mg" {
+#   value = data.azurerm_management_group.this.all_management_group_ids
+# }
+
+# locals {
+#   mg = split("/", data.azurerm_management_group.this.all_management_group_ids[0])
+#   mg_name = element(local.mg, 4)
+#   env = element(split("/", data.azurerm_management_group.this.all_management_group_ids[0]), 4)
+#   envs = split("-", element(split("/", data.azurerm_management_group.this.all_management_group_ids[0]), 4))
+#   env1 = "${element(split("-", element(split("/", data.azurerm_management_group.this.all_management_group_ids[0]), 4)), 3)}"
+# }
+
+data "azurerm_storage_blob" "this" {
+  name                   = "blob.txt"
+  storage_account_name   = "kotnalaa"
+  storage_container_name = "test"
 }
-
-# data "azurerm_storage_account" "this" {
-#   name                = "abcxyz"
-#   resource_group_name = "RG001"
-# }
-
-# data "azurerm_storage_blob" "this" {
-#   name                   = "backup.ps1"
-#   storage_account_name   = "abcxyz"
-#   storage_container_name = "test"
-# }
-
-# data "azurerm_storage_account_blob_container_sas" "this" {
-#   connection_string = data.azurerm_storage_account.this.primary_connection_string
-#   container_name    = "test"
-#   start             = timestamp()
-#   expiry            = timeadd(timestamp(), "15m")
-#   permissions {
-#     read   = true
-#     list   = true
-#     create = false
-#     write  = false
-#     delete = false
-#     add    = false
-#   }
-# }
-
-# data "azurerm_key_vault" "this" {
-#   name = "keyvault1"
-#   resource_group_name = "RSG01"  
-# }
-
-# data "azurerm_key_vault_secret" "password" {
-#   name = "sqlpassword"
-#   key_vault_id = data.azurerm_key_vault.this.id  
-# }
-
-# resource "azurerm_automation_runbook" "this" {
-#   name                    = "test"
-#   automation_account_name = "automation"
-#   location                = "eastus"
-#   resource_group_name     = "my-rsg-001"
-#   runbook_type            = "PowerShell"
-#   log_progress            = "true"
-#   log_verbose             = "true"
-#   publish_content_link {
-#     uri = "${data.azurerm_storage_blob.this.url}${data.azurerm_storage_account_blob_container_sas.this.sas}"
-#   }
-# }
-
-# resource "azurerm_automation_schedule" "this" {
-#   name                    = "auto-schedule"
-#   automation_account_name = "automata"
-#   resource_group_name     = "my-rsg-007"
-#   frequency               = "Day"
-#   interval                = 1
-#   start_time              = null
-#   timezone                = null
-# }
-
-# resource "azurerm_automation_job_schedule" "this" {
-#   automation_account_name = "automata"
-#   resource_group_name     = "my-rsg-007"
-#   schedule_name           = azurerm_automation_schedule.this.name
-#   runbook_name            = azurerm_automation_runbook.this.name
-#   parameters = {
-#     resource_group  = "rsg"
-#     storage_account = "strageajsdaiodu"
-#     password = data.azurerm_key_vault_secret.password.value# password from keyvault. 
-#   }
-# } 
-
-output "sub_id" {
-  value = data.azurerm_subscription.current.subscription_id
-}
-
-data "azurerm_subscription" "current" {
-}
-
-resource "azurerm_key_vault_access_policy" "kv-acl" {
-  key_vault_id = data.azurerm_key_vault.this.id
-  tenant_id    = data.azurerm_subscription.current.tenant_id
-  object_id    = module.automation-account.identity[0].principle_id
-
-  secret_permissions = [
-    "Get", "List"
-  ]
-}
-
-module "sqlmi" {
-  source = "./sqlmi"
-  name = ""
-  resource_group_name = ""
-  location = ""
-}
+# 101268589596
