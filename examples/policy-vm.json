@@ -1,0 +1,138 @@
+{
+    "properties": {
+      "displayName": "pol-requiredtags",
+      "policyType": "Custom",
+      "mode": "Indexed",
+      "description": "This Policy will append required tags to any new resource group and will append to existing one's when they are updated. ",
+      "metadata": {
+        "createdBy": "72413a8b-f895-4581-9cd6-861b1ee411f6",
+        "createdOn": "2023-08-09T14:31:11.3548393Z",
+        "updatedBy": "72413a8b-f895-4581-9cd6-861b1ee411f6",
+        "updatedOn": "2023-08-14T14:54:21.1022625Z"
+      },
+      "parameters": {
+        "tagApplicationName": {
+          "type": "String",
+          "metadata": {
+            "description": "Key of the tag",
+            "displayName": "Application Name Tag"
+          },
+          "defaultValue": "application_name"
+        },
+        "tagApplicationNameValue": {
+          "type": "String",
+          "metadata": {
+            "description": "Value of the tag, such as 'allina-abc-app'",
+            "displayName": "Application Name Value"
+          },
+          "defaultValue": "not_assigned"
+        },
+        "tagCostCenter": {
+          "type": "String",
+          "metadata": {
+            "description": "Name of the tag, such as 'service'",
+            "displayName": "Cost Center Tag"
+          },
+          "defaultValue": "cost_center"
+        },
+        "tagCostCenterValue": {
+          "type": "String",
+          "metadata": {
+            "description": "Value of the tag, such as 'Cost-001'",
+            "displayName": "Cost Center Value"
+          },
+          "defaultValue": "not_assigned"
+        },
+        "tagDeploymentDate": {
+          "type": "String",
+          "metadata": {
+            "description": "Name of the tag",
+            "displayName": "Deployment Date Tag"
+          },
+          "defaultValue": "deployment_date"
+        },
+        "tagDeploymentDateValue": {
+          "type": "String",
+          "metadata": {
+            "description": "Value of the tag, such as 'yyyy/mm/dd'",
+            "displayName": "Deployment Date Value"
+          },
+          "defaultValue": "not_assigned"
+        },
+        "tagEnvironment": {
+          "type": "String",
+          "metadata": {
+            "description": "Name of the tag",
+            "displayName": "Environment Tag"
+          },
+          "defaultValue": "environment"
+        },
+        "tagEnvironmentValue": {
+          "type": "String",
+          "metadata": {
+            "description": "Value of the tag, such as 'POC'",
+            "displayName": "Environment Value"
+          },
+          "defaultValue": "not_assigned"
+        }
+      },
+      "policyRule": {
+        "if": {
+          "allOf": [
+            {
+              "equals": "Microsoft.Resources/subscriptions/resourceGroups",
+              "field": "type"
+            },
+            {
+              "exists": "false",
+              "field": "[concat('tags[', parameters('tagApplicationName'), ']')]"
+            },
+            {
+              "exists": "false",
+              "field": "[concat('tags[', parameters('tagCostCenter'), ']')]"
+            },
+            {
+              "exists": "false",
+              "field": "[concat('tags[', parameters('tagEnvironment'), ']')]"
+            },
+            {
+              "exists": "false",
+              "field": "[concat('tags[', parameters('tagDeploymentDate'), ']')]"
+            }
+          ]
+        },
+        "then": {
+          "details": [
+            {
+              "field": "[concat('tags[', parameters('tagApplicationName'), ']')]",
+              "value": "[parameters('tagApplicationNameValue')]"
+            },
+            {
+              "field": "[concat('tags[', parameters('tagCostCenter'), ']')]",
+              "value": "[parameters('tagCostCenterValue')]"
+            },
+            {
+              "field": "[concat('tags[', parameters('tagEnvironment'), ']')]",
+              "value": "[parameters('tagEnvironmentValue')]"
+            },
+            {
+              "field": "[concat('tags[', parameters('tagDeploymentDate'), ']')]",
+              "value": "[parameters('tagDeploymentDateValue')]"
+            }
+          ],
+          "effect": "append"
+        }
+      }
+    },
+    "id": "/providers/Microsoft.Management/managementGroups/mg-ahs-foundation/providers/Microsoft.Authorization/policyDefinitions/pol-requiredtags",
+    "type": "Microsoft.Authorization/policyDefinitions",
+    "name": "pol-requiredtags",
+    "systemData": {
+      "createdBy": "b4b2201d-22c2-4f36-b198-d3849a6f6d8d",
+      "createdByType": "Application",
+      "createdAt": "2023-08-09T14:31:11.1226059Z",
+      "lastModifiedBy": "b4b2201d-22c2-4f36-b198-d3849a6f6d8d",
+      "lastModifiedByType": "Application",
+      "lastModifiedAt": "2023-08-14T14:54:21.0419053Z"
+    }
+  }

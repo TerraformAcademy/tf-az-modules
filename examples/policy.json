@@ -1,0 +1,73 @@
+{
+    "properties": {
+      "displayName": "Add-Tags-Multiple-New",
+      "policyType": "Custom",
+      "mode": "All",
+      "metadata": {
+        "category": "Tags",
+        "createdBy": "b20c3001-c470-4488-81c4-86f6fd57665a",
+        "createdOn": "2023-03-23T13:07:27.0170886Z",
+        "updatedBy": "b20c3001-c470-4488-81c4-86f6fd57665a",
+        "updatedOn": "2023-03-23T13:20:09.6158173Z"
+      },
+      "parameters": {},
+      "policyRule": {
+        "if": {
+          "allOf": [
+            {
+              "field": "type",
+              "equals": "Microsoft.Resources/subscriptions/resourceGroups"
+            },
+            {
+              "field": "tags['application_name']",
+              "exists": "false"
+            },
+            {
+              "field": "tags['cost_center']",
+              "exists": "false"
+            },
+            {
+              "field": "tags['deployment_date']",
+              "exists": "false"
+            },
+            {
+              "field": "tags['environment']",
+              "exists": "false"
+            }
+          ]
+        },
+        "then": {
+          "effect": "append",
+          "details": [
+            {
+              "field": "tags['application_name']",
+              "value": "not_assigned"
+            },
+            {
+              "field": "tags['cost_center']",
+              "value": "not_assigned"
+            },
+            {
+              "field": "tags['environment']",
+              "value": "not_assigned"
+            },
+            {
+              "field": "tags['deployment_date']",
+              "value": "not_assigned"
+            }
+          ]
+        }
+      }
+    },
+    "id": "/subscriptions/28e1f188-21a7-4ab2-8d0c-a2c92ee73c0e/providers/Microsoft.Authorization/policyDefinitions/ac93051b-fc46-43f6-be75-94e4a9103418",
+    "type": "Microsoft.Authorization/policyDefinitions",
+    "name": "ac93051b-fc46-43f6-be75-94e4a9103418",
+    "systemData": {
+      "createdBy": "ankitkotnala@live.in",
+      "createdByType": "User",
+      "createdAt": "2023-03-23T13:07:26.986205Z",
+      "lastModifiedBy": "ankitkotnala@live.in",
+      "lastModifiedByType": "User",
+      "lastModifiedAt": "2023-03-23T13:20:09.5949634Z"
+    }
+  }
