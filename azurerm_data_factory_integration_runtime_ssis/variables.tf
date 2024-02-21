@@ -86,3 +86,45 @@ variable "express_custom_setup" {
     powershell_version = optional(string, null)
   }))
 }
+
+variable "express_vnet_integration" {
+  type = set(object({
+    subnet_id = string
+  }))
+
+  default = []
+}
+
+variable "package_store" {
+  type = set(object({
+     name = string
+     linked_service_name = string
+  }))
+
+  default = []
+}
+
+variable "proxy" {
+  type = set(object({
+     self_hosted_integration_runtime_name = string
+     staging_storage_linked_service_name = string
+     path = optional(string)
+  }))
+
+  default = []
+}
+
+variable "vnet_integration" {
+  type = set(object({
+    vnet_id = optional(string)
+    subnet_name = optional(string)
+    subnet_id = optional(string)
+    public_ips = optional(list(string))
+  }))
+}
+
+variable "description" {
+  type = string
+  description = "(Optional) Integration runtime description."
+  default =  null
+}

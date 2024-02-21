@@ -19,4 +19,62 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
       dual_standby_pair_name = catalog_info.value["dual_standby_pair_name"]
     }
   }
+  dynamic "custom_setup_script" {
+    for_each = var.custom_setup_script
+    content {
+      blob_container_uri = custom_setup_script.value["blob_container_uri"]
+      sas_token = custom_setup_script.value["sas_token"]
+    }
+  }
+
+  dynamic "express_custom_setup" {
+    for_each = var.express_custom_setup
+    content {
+      dynamic "command_key" {
+        for_each = express_custom_setup.value["command_key"]
+        content {
+            target_name = command_key.value["target_name"]
+            user_name = command_key.value["target_name"]
+            password = command_key.value["password"]
+        }
+      }
+    }
+  }
+
+  dynamic "express_vnet_integration" {
+    for_each = var.express_vnet_integration
+    content {
+      subnet_id = express_vnet_integration.value["subnet_id"]
+    }
+  }
+
+  dynamic "package_store " {
+    for_each = var.package_store 
+    content {
+        name = package_store.value["name"]
+        linked_service_name = package_store.value["linked_service_name"]
+    }
+  }
+
+  dynamic "proxy" {
+    for_each = var.proxy
+    content {
+      self_hosted_integration_runtime_name = proxy.vlaue["self_hosted_integration_runtime_name"]
+      staging_storage_linked_service_name = proxy.vlaue["staging_storage_linked_service_name"]
+      path =  proxy.value["path"]
+    }
+  }
+
+  dynamic "vnet_integration" {
+    for_each = var.vnet_integration
+    content {
+      vnet_id = vnet_integration.value["vnet_id"]
+      subnet_name = vnet_integration.value["subnet_name"]
+      subnet_id = vnet_integration.value["subnet_id"]
+      public_ips = vnet_integration.value["public_ips"]
+    }
+  }
+
+  description = var.description
+
 }
