@@ -76,10 +76,22 @@ variable "express_custom_setup" {
       target_name = string
       user_name   = string
       password    = optional(string, null)
+      key_vault_password = optional(set(object({
+        linked_service_name = string
+        secret_name         = string
+        secret_version      = optional(string)
+        parameters          = optional(map(string))
+      })))
     })), [])
     component = optional(set(object({
       name    = string
       license = optional(string, null)
+      key_vault_license = optional(set(object({
+        linked_service_name = string
+        secret_name         = string
+        secret_version      = optional(string)
+        parameters          = optional(map(string))
+      })))
 
     })), [])
     environment        = optional(list(string), [])

@@ -36,6 +36,32 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
           target_name = command_key.value["target_name"]
           user_name   = command_key.value["target_name"]
           password    = command_key.value["password"]
+          dynamic "key_vault_password" {
+            for_each = command_key.value["key_vault_password"]
+            content {
+              linked_service_name = key_vault_password.value["linked_service_name"]
+              secret_name         = key_vault_password.value["secret_name"]
+              secret_version      = key_vault_password.value["secret_version"]
+              parameters          = key_vault_password.value["parameters"]
+            }
+          }
+        }
+      }
+
+      dynamic "component" {
+        for_each = express_custom_setup.value["component"]
+        content {
+          name    = component.value["name"]
+          license = component.value["license"]
+          dynamic "key_vault_license" {
+            for_each = component.value["key_vault_password"]
+            content {
+              linked_service_name = key_vault_password.value["linked_service_name"]
+              secret_name         = key_vault_password.value["secret_name"]
+              secret_version      = key_vault_password.value["secret_version"]
+              parameters          = key_vault_password.value["parameters"]
+            }
+          }
         }
       }
     }
