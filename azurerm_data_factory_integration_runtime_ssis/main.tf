@@ -1,21 +1,21 @@
 resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
-  name = var.name
-  location = var.location
-  data_factory_id = var.data_factory_id
-  node_size = var.node_size
-  number_of_nodes = var.number_of_nodes
-  credential_name = var.credential_name
+  name                             = var.name
+  location                         = var.location
+  data_factory_id                  = var.data_factory_id
+  node_size                        = var.node_size
+  number_of_nodes                  = var.number_of_nodes
+  credential_name                  = var.credential_name
   max_parallel_executions_per_node = var.max_parallel_executions_per_node
-  edition = var.edition
-  license_type = var.license_type
+  edition                          = var.edition
+  license_type                     = var.license_type
   dynamic "catalog_info" {
     for_each = var.catalog_info
     content {
-      server_endpoint = catalog_info.value["server_endpoint"]
-      administrator_login = catalog_info.value["administrator_login"]
+      server_endpoint        = catalog_info.value["server_endpoint"]
+      administrator_login    = catalog_info.value["administrator_login"]
       administrator_password = catalog_info.value["administrator_password"]
-      pricing_tier = catalog_info.value["pricing_tier"]
-      elastic_pool_name = catalog_info.value["elastic_pool_name"]
+      pricing_tier           = catalog_info.value["pricing_tier"]
+      elastic_pool_name      = catalog_info.value["elastic_pool_name"]
       dual_standby_pair_name = catalog_info.value["dual_standby_pair_name"]
     }
   }
@@ -23,7 +23,7 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
     for_each = var.custom_setup_script
     content {
       blob_container_uri = custom_setup_script.value["blob_container_uri"]
-      sas_token = custom_setup_script.value["sas_token"]
+      sas_token          = custom_setup_script.value["sas_token"]
     }
   }
 
@@ -33,9 +33,9 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
       dynamic "command_key" {
         for_each = express_custom_setup.value["command_key"]
         content {
-            target_name = command_key.value["target_name"]
-            user_name = command_key.value["target_name"]
-            password = command_key.value["password"]
+          target_name = command_key.value["target_name"]
+          user_name   = command_key.value["target_name"]
+          password    = command_key.value["password"]
         }
       }
     }
@@ -48,11 +48,11 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
     }
   }
 
-  dynamic "package_store " {
-    for_each = var.package_store 
+  dynamic "package_store" {
+    for_each = var.package_store
     content {
-        name = package_store.value["name"]
-        linked_service_name = package_store.value["linked_service_name"]
+      name                = package_store.value["name"]
+      linked_service_name = package_store.value["linked_service_name"]
     }
   }
 
@@ -60,18 +60,18 @@ resource "azurerm_data_factory_integration_runtime_azure_ssis" "this" {
     for_each = var.proxy
     content {
       self_hosted_integration_runtime_name = proxy.vlaue["self_hosted_integration_runtime_name"]
-      staging_storage_linked_service_name = proxy.vlaue["staging_storage_linked_service_name"]
-      path =  proxy.value["path"]
+      staging_storage_linked_service_name  = proxy.vlaue["staging_storage_linked_service_name"]
+      path                                 = proxy.value["path"]
     }
   }
 
   dynamic "vnet_integration" {
     for_each = var.vnet_integration
     content {
-      vnet_id = vnet_integration.value["vnet_id"]
+      vnet_id     = vnet_integration.value["vnet_id"]
       subnet_name = vnet_integration.value["subnet_name"]
-      subnet_id = vnet_integration.value["subnet_id"]
-      public_ips = vnet_integration.value["public_ips"]
+      subnet_id   = vnet_integration.value["subnet_id"]
+      public_ips  = vnet_integration.value["public_ips"]
     }
   }
 

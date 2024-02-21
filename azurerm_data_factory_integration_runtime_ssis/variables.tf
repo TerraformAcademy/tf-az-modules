@@ -19,42 +19,42 @@ variable "node_size" {
 }
 
 variable "number_of_nodes" {
-  type = number
+  type        = number
   description = "(Optional) Number of nodes for the Azure-SSIS Integration Runtime. Max is 10."
-  default = 1
+  default     = 1
 }
 
 variable "credential_name" {
-  type = string
+  type        = string
   description = " (Optional) The name of a Data Factory Credential that the SSIS integration will use to access data sources."
-  default = null
+  default     = null
 }
 
 variable "max_parallel_executions_per_node" {
-  type = number
+  type        = number
   description = "(Optional) Defines the maximum parallel executions per node."
-  default = 1
+  default     = 1
 }
 
 variable "edition" {
-  type = string
+  type        = string
   description = "(Optional) The Azure-SSIS Integration Runtime edition. Valid values are Standard and Enterprise."
-  default = "Standard"
+  default     = "Standard"
 }
 
 variable "license_type" {
-  type = string
+  type        = string
   description = " (Optional) The type of the license that is used. Valid values are LicenseIncluded and BasePrice."
-  default = "LicenseIncluded"
+  default     = "LicenseIncluded"
 }
 
 variable "catalog_info" {
   type = set(object({
-    server_endpoint = string
-    administrator_login = optional(string, null)
+    server_endpoint        = string
+    administrator_login    = optional(string, null)
     administrator_password = optional(string, null)
-    pricing_tier = optional(string)
-    elastic_pool_name = optional(string)
+    pricing_tier           = optional(string)
+    elastic_pool_name      = optional(string)
     dual_standby_pair_name = optional(string)
   }))
 
@@ -64,9 +64,9 @@ variable "catalog_info" {
 variable "custom_setup_script" {
   type = set(object({
     blob_container_uri = string
-    sas_token = string
+    sas_token          = string
   }))
-  
+
   default = []
 }
 
@@ -74,15 +74,15 @@ variable "express_custom_setup" {
   type = set(object({
     command_key = optional(set(object({
       target_name = string
-      user_name = string
-      password = optional(string, null)
+      user_name   = string
+      password    = optional(string, null)
     })), [])
     component = optional(set(object({
-      name = string
+      name    = string
       license = optional(string, null)
 
     })), [])
-    environment = optional(list(string), [])
+    environment        = optional(list(string), [])
     powershell_version = optional(string, null)
   }))
 }
@@ -97,8 +97,8 @@ variable "express_vnet_integration" {
 
 variable "package_store" {
   type = set(object({
-     name = string
-     linked_service_name = string
+    name                = string
+    linked_service_name = string
   }))
 
   default = []
@@ -106,9 +106,9 @@ variable "package_store" {
 
 variable "proxy" {
   type = set(object({
-     self_hosted_integration_runtime_name = string
-     staging_storage_linked_service_name = string
-     path = optional(string)
+    self_hosted_integration_runtime_name = string
+    staging_storage_linked_service_name  = string
+    path                                 = optional(string)
   }))
 
   default = []
@@ -116,15 +116,15 @@ variable "proxy" {
 
 variable "vnet_integration" {
   type = set(object({
-    vnet_id = optional(string)
+    vnet_id     = optional(string)
     subnet_name = optional(string)
-    subnet_id = optional(string)
-    public_ips = optional(list(string))
+    subnet_id   = optional(string)
+    public_ips  = optional(list(string))
   }))
 }
 
 variable "description" {
-  type = string
+  type        = string
   description = "(Optional) Integration runtime description."
-  default =  null
+  default     = null
 }
