@@ -97,6 +97,8 @@ variable "express_custom_setup" {
     environment        = optional(list(string), [])
     powershell_version = optional(string, null)
   }))
+
+  default = []
 }
 
 variable "express_vnet_integration" {
@@ -133,6 +135,7 @@ variable "vnet_integration" {
     subnet_id   = optional(string)
     public_ips  = optional(list(string))
   }))
+  default = []
 }
 
 variable "description" {
