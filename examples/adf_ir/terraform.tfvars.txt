@@ -1,0 +1,10 @@
+ir_azure = {
+  "iraz1" = {
+    name = "test-az-ir-adf"
+    data_factory_id = "/susbcriptions/xxxx/resakdjalkdjalkd/adf-id"
+    location    =  "AutoResolve"
+  }
+}
+
+ir_self_hosted = {}
+ir_ssis = {}
