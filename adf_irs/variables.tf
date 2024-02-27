@@ -96,4 +96,6 @@ variable "ir_ssis" {
     })), [])
     description = optional(string, null)
   }))
+
+  default = {}
 }
