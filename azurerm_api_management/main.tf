@@ -58,7 +58,7 @@ resource "azurerm_api_management" "this" {
       }
 
       dynamic "proxy" {
-        for_each = hostname_configuration.value["scm"]
+        for_each = hostname_configuration.value["proxy"]
         content {
           default_ssl_binding             = proxy.value["default_ssl_binding"]
           host_name                       = proxy.value["hostname"]
