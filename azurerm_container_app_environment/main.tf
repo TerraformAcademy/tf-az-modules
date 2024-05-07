@@ -5,8 +5,8 @@ resource "azurerm_container_app_environment" "this" {
   dapr_application_insights_connection_string = var.dapr_application_insights_connection_string
   infrastructure_resource_group_name          = var.infrastructure_resource_group_name
   infrastructure_subnet_id                    = var.infrastructure_subnet_id
-  internal_load_balancer_enabled              = var.internal_load_balancer_enabled
-  zone_redundancy_enabled                     = var.zone_redundancy_enabled
+  # internal_load_balancer_enabled              = false #var.internal_load_balancer_enabled
+  # zone_redundancy_enabled                     = false #var.zone_redundancy_enabled
   log_analytics_workspace_id                  = var.log_analytics_workspace_id
   dynamic "workload_profile" {
     for_each = var.workload_profile

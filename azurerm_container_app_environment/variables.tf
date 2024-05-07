@@ -31,17 +31,17 @@ variable "infrastructure_subnet_id" {
   default     = null
 }
 
-variable "internal_load_balancer_enabled" {
-  type        = bool
-  description = "Should the Container Environment operate in Internal Load Balancing Mode?"
-  default     = false
-}
+# variable "internal_load_balancer_enabled" {
+#   type        = bool
+#   description = "Should the Container Environment operate in Internal Load Balancing Mode?"
+#   default     = false
+# }
 
-variable "zone_redundancy_enabled" {
-  type        = bool
-  description = "Should the Container App Environment be created with Zone Redundancy enabled? "
-  default     = false
-}
+# variable "zone_redundancy_enabled" {
+#   type        = bool
+#   description = "Should the Container App Environment be created with Zone Redundancy enabled? "
+#   default     = false
+# }
 
 variable "log_analytics_workspace_id" {
   type        = string
