@@ -7,23 +7,32 @@ resource "azurerm_container_app" "this" {
   dynamic "template" {
     for_each = var.template
     content {
-      init_container {
-        args    = template.value["init_container"].args
-        command = template.value["init_container"].command
-        cpu     = template.value["init_container"].cpu
-        env {
-          name        = template.value["env"].name
-          secret_name = template.value["env"].secret_name
-          value       = template.value["env"].value
+      dynamic "init_container" {
+        for_each = template.value["init_container"]
+        content {
+
+          args    = init_container.value["args"]
+          command = init_container.value["command"]
+          cpu     = init_container.value["cpu"]
+          dynamic "env" {
+            for_each = init_container.value["env"]
+            content {
+
+              name        = env.value["name"]
+              secret_name = env.value["secret_name"]
+              value       = env.value["value"]
+            }
+          }
+          ephemeral_storage = template.value["init_container"].ephemeral_storage
+          image             = template.value["init_container"].image
+          memory            = template.value["init_container"].memory
+          name              = template.value["init_container"].name
+          volume_mounts {
+            name = template.value["volume_mounts"].name
+            path = template.value["volume_mounts"].path
+          }
         }
-        ephemeral_storage = template.value["init_container"].ephemeral_storage
-        image             = template.value["init_container"].image
-        memory            = template.value["init_container"].memory
-        name              = template.value["init_container"].name
-        volume_mounts {
-          name = template.value["volume_mounts"].name
-          path = template.value["volume_mounts"].path
-        }
+
       }
 
       dynamic "container" {

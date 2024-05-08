@@ -25,11 +25,11 @@ variable "template" {
       args    = optional(list(string), [])
       command = optional(string, null)
       cpu     = optional(string, null)
-      env = optional(object({
+      env = optional(set(object({
         name        = string
         secret_name = optional(string, null)
         value       = optional(string, null)
-      }))
+      })))
       ephemeral_storage = optional(string, null)
       image             = string
       memory            = optional(string, null)
@@ -43,11 +43,11 @@ variable "template" {
       args    = optional(list(string), [])
       command = optional(string, null)
       cpu     = optional(string, null)
-      env = optional(object({
+      env = optional(set(object({
         name        = string
         secret_name = optional(string, null)
         value       = optional(string, null)
-      }), null)
+      })), null)
       ephemeral_storage = optional(string, null)
       image             = string
       liveness_probe = optional(object({
