@@ -21,7 +21,7 @@ variable "revision_mode" {
 
 variable "template" {
   type = set(object({
-    init_contianer = optional(object({
+    init_contianer = optional(set(object({
       args    = optional(list(string), [])
       command = optional(string, null)
       cpu     = optional(string, null)
@@ -38,7 +38,7 @@ variable "template" {
         name = string
         path = string
       }))
-    }))
+    })), [])
     container = set(object({
       args    = optional(list(string), [])
       command = optional(string, null)
