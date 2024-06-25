@@ -41,10 +41,13 @@ resource "azurerm_container_app" "this" {
           args    = container.value["args"]
           command = container.value["command"]
           cpu     = container.value["cpu"]
-          env {
-            name        = container.value["env"].name
-            secret_name = container.value["env"].secret_name
-            value       = container.value["env"].value
+          dynamic "env" {
+            for_each = container.value["env"]
+            content {
+            name        = env.value["name"]
+            secret_name = env.value["secret_name"]
+            value       = env.value["value"]
+           }
           }
           ephemeral_storage = container.value["ephemeral_storage"]
           image             = container.value["image"]
