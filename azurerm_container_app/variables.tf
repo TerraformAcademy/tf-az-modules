@@ -71,3 +71,75 @@ variable "tags" {
 
   description = "A mapping of tags to assign to the Container App."
 }
+
+
+variable "dapr" {
+  type = set(object({
+    app_id = string
+    app_port = optional(number, null)
+    app_protocol = optional(string, null)
+  }))
+
+  default = []
+}
+
+variable "registry" {
+  type = set(object({
+    server = string
+    identity = optional(string, null)
+    password_secret_nae = otpional(string, null)
+    username = otpional(string, null)
+  }))
+
+  default = []
+}
+
+variable "identity" {
+  type = list(object({
+    type         = string                 # (Required) Specifies the type of Managed Service Identity that should be configured on this Container App. Possible values are SystemAssigned, UserAssigned, SystemAssigned, UserAssigned (to enable both).
+    identity_ids = optional(list(string)) # (Optional) Specifies a list of User Assigned Managed Identity IDs to be assigned to this Container App.
+  }))
+  description = "(Optional) An identity block as documented above."
+
+  default = []
+}
+
+variable "ingress" {
+  type = set(object({
+    allow_insecure_connections = optional(bool, false)
+    custom_domain = optional(set(object({
+        certificate_binding_type = optional(string, "Disabled")
+        certificate_id = string
+        name = string
+    })), [])
+
+    fqdn = optional(string, null)
+    external_enabled = optional(bool, false)
+    target_port = number
+    exposed_port = optional(number, null)
+    traffic_weight = set(object({
+      label = optional(string, null)
+      latest_revision = optional(bool, false)
+      revision_suffix = optional(string, null)
+      percentage = number
+    }))
+    transport = optional(string, "auto")
+  }))
+}
+
+variable "secret" {
+  type = set(object({
+    name =  string
+    # identity = optional(string, null)
+    # key_vault_secret_id = optional(string, null)
+    value = optional(string, null)
+  }))
+
+  default = []
+}
+
+
+variable "workload_profile_name" {
+  type = string
+  default = null
+}

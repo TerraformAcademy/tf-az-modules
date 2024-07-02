@@ -60,4 +60,62 @@ resource "azurerm_container_app" "this" {
   }
 
   tags = var.tags
+
+  dynamic "dapr" {
+    for_each = var.dapr
+    content {
+      app_id = dapr.value["app_id"]
+      app_port = dapr.value["app_port"]
+      app_protocol = dapr.value["app_protocol"]
+    }
+  }
+
+  dynamic "identity" {
+    for_each = var.identity
+    content {
+      type         = identity.value["type"]
+      identity_ids = identity.value["identity_ids"]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.ingress
+    content {
+      allow_insecure_connections = ingress.value["allow_insecure_connections"]
+      dynamic "custom_domain" {
+        for_each = ingress.value["custom_domain"]
+        content {
+          certificate_binding_type = custom_domain.value["certificate_binding_type"]
+          certificate_id = custom_domain.value["certificate_id"]
+          name = custom_domain.value["name"]
+        }
+      }
+      fqdn = ingress.value["fqdn"]
+      external_enabled = ingress.value["external_enabled"]
+      target_port = ingress.value["target_port"]
+      exposed_port = ingress.value["exposed_port"]
+      dynamic "traffic_weight" {
+        for_each = ingress.value["traffic_weight"]
+        content {
+          label = traffic_weight.value["label"]
+          latest_revision = traffic_weight.value["latest_revision"]
+          revision_suffix = traffic_weight.value["revision_suffix"]
+          percentage = traffic_weight.value["percentage"]
+        }
+      }
+      transport = ingress.value["transport"]
+    }
+  }
+
+  dynamic "secret" {
+    for_each = var.secret
+    content {
+      name = secret.value["name"]
+     # identity = secret.value["identity"]
+     # key_vault_secret_id = secret.value["key_vault_secret_id"]
+      value = secret.value["value"]
+    }
+  }
+
+  workload_profile_name = var.workload_profile_name
 }
