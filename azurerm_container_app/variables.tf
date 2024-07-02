@@ -111,7 +111,7 @@ variable "ingress" {
         certificate_binding_type = optional(string, "Disabled")
         certificate_id = string
         name = string
-    })), [])
+    })))
 
     fqdn = optional(string, null)
     external_enabled = optional(bool, false)
@@ -125,6 +125,8 @@ variable "ingress" {
     }))
     transport = optional(string, "auto")
   }))
+
+  default = []
 }
 
 variable "secret" {
