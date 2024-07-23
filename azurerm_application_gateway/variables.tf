@@ -143,10 +143,10 @@ variable "private_link_configuration" {
   type = set(object({
     name = string #(Required) The name of the private link configuration.
     ip_configuration = set(object({
-      name                          = string                #(Required) The name of the IP configuration.
-      subnet_id                     = string                #(Required) The ID of the subnet the private link configuration should connect to.
-      private_ip_address_allocation = string                #(Required) The allocation method used for the Private IP Address. Possible values are Dynamic and Static.
-      primary                       = string                #(Required) Is this the Primary IP Configuration?
+      name                          = string                 #(Required) The name of the IP configuration.
+      subnet_id                     = string                 #(Required) The ID of the subnet the private link configuration should connect to.
+      private_ip_address_allocation = string                 #(Required) The allocation method used for the Private IP Address. Possible values are Dynamic and Static.
+      primary                       = string                 #(Required) Is this the Primary IP Configuration?
       private_ip_address            = optional(string, null) #(Optional) The Static IP Address which should be used.
     }))
 
@@ -371,4 +371,87 @@ variable "rewrite_rule_set" {
     })), [])
   }))
   default = []
+}
+
+# WAF Variables 
+
+variable "custom_rules" {
+  type = set(object({
+    enabled   = optional(bool, true)   # (Optional) Describes if the policy is in enabled state or disabled state.
+    name      = optional(string, null) # Optional) Gets name of the resource that is unique within a policy. This name can be used to access the resource.
+    priority  = number                 # (Required) Describes priority of the rule. Rules with a lower value will be evaluated before rules with a higher value.
+    rule_type = string                 # (Required) Describes the type of rule. Possible values are MatchRule, RateLimitRule and Invalid.
+    match_conditions = set(object({
+      match_variables = set(object({
+        variable_name = string           # (Required) The name of the Match Variable. Possible values are RemoteAddr, RequestMethod, QueryString, PostArgs, RequestUri, RequestHeaders, RequestBody and RequestCookies.
+        selector      = optional(string) # (Optional) Describes field of the matchVariable collection
+      }), [])
+      match_values       = optional(list(string))     # (Optional) A list of match values. This is Required when the operator is not Any.
+      operator           = string                     # (Required) Describes operator to be matched. Possible values are Any, IPMatch, GeoMatch, Equal, Contains, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, BeginsWith, EndsWith and Regex.
+      negation_condition = optional(bool, false)      # (Optional) Describes if this is negate condition or not
+      transforms         = optional(list(string), []) # A list of transformations to do before the match is attempted. Possible values are HtmlEntityDecode, Lowercase, RemoveNulls, Trim, UrlDecode and UrlEncode.
+    }), [])                                           # Required) One or more match_conditions blocks as defined below.
+
+    action               = string                 # (Required) Type of action. Possible values are Allow, Block and Log.
+    rate_limit_duration  = optional(string, null) # (Optional) Specifies the duration at which the rate limit policy will be applied. Should be used with RateLimitRule rule type. Possible values are FiveMins and OneMin.
+    rate_limit_threshold = optional(number, 1)    # Optional) Specifies the threshold value for the rate limit policy. Must be greater than or equal to 1 if provided.
+    group_rate_limit_by  = optional(string, null) # (Optional) Specifies what grouping the rate limit will count requests by. Possible values are GeoLocation, ClientAddr and None.
+
+  }))
+
+  default = []
+}
+
+variable "policy_settings" {
+  type = set(object({
+    enabled                     = optional(bool, true)           # (Optional) Describes if the policy is in enabled state or disabled state. 
+    mode                        = optional(string, "Prevention") # (Optional) Describes if it is in detection mode or prevention mode at the policy level. Valid values are Detection and Prevention. Defaults to Prevention.
+    file_upload_limit_in_mb     = optional(number, 100)          # (Optional) The File Upload Limit in MB. Accepted values are in the range 1 to 4000.
+    request_body_check          = optional(bool, true)           # Optional) Is Request Body Inspection enabled?
+    max_request_body_size_in_kb = optional(number, 128)          # (Optional) The Maximum Request Body Size in KB. Accepted values are in the range 8 to 2000.
+    log_scrubbing = optional(set(object({
+      enabled = optional(bool, true) # (Optional) Whether this rule is enabled. Defaults to true.
+      rule = optional(set(object({
+        enabled                 = optional(bool, true)   # (Optional) Describes if the policy is in enabled state or disabled state. 
+        match_variable          = string                 # (Required) Specifies the variable to be scrubbed from the logs. Possible values are RequestHeaderNames, RequestCookieNames, RequestArgNames, RequestPostArgNames, RequestJSONArgNames and RequestIPAddress.
+        selector_match_operator = optional(string, null) #(Optional) Specifies the operating on the selector. Possible values are Equals and EqualsAny. Defaults to Equals.
+        selector                = optional(string, null) # (Optional) Specifies which elements in the collection this rule applies to.
+      })), [])
+    }), []))
+    request_body_inspect_limit_in_kb = optional(number, 128) # (Optional) Specifies the maximum request body inspection limit in KB for the Web Application Firewall.
+  }), [])
+
+  default = []
+}
+
+variable "managed_rules" {
+  type = set(object({
+    exclusion = optional(set(object({
+      match_variable          = string # (Required) The name of the Match Variable. Possible values: RequestArgKeys, RequestArgNames, RequestArgValues, RequestCookieKeys, RequestCookieNames, RequestCookieValues, RequestHeaderKeys, RequestHeaderNames, RequestHeaderValues.
+      selector                = string # (Required) Describes field of the matchVariable collection.
+      selector_match_operator = string # (Required) Describes operator to be matched. Possible values: Contains, EndsWith, Equals, EqualsAny, StartsWith.
+      excluded_rule_set = optional(set(object({
+        type    = optional(string, "OWASP") # (Optional) The rule set type. The only possible value include Microsoft_DefaultRuleSet and OWASP. Defaults to OWASP.
+        version = optional(string, "3.2")   # (Optional) The rule set version. The only possible value include 2.1 (for rule set type Microsoft_DefaultRuleSet) and 3.2 (for rule set type OWASP). 
+        rule_group = optional(set(object({
+          rule_group_name = string                     # (Required) The name of rule group for exclusion.
+          excluded_rules  = optional(list(string), []) # (Optional) One or more Rule IDs for exclusion.
+        })), [])
+      })), [])
+    })), [])
+
+    managed_rule_set = optional(set(object({
+      type    = optional(string, "OWASP") # (Optional) The rule set type. The only possible value include Microsoft_BotManagerRuleSet, Microsoft_DefaultRuleSet and OWASP. Defaults to OWASP.
+      version = string                    # (Required) The rule set version. The only possible value include 2.1 (for rule set type Microsoft_DefaultRuleSet) and 3.2 (for rule set type OWASP). 
+      rule_group_override = optional(set(object({
+        rule_group_name = string # (Required) The name of the Rule Group.
+        rule = optional(set(object({
+          id      = string                      # (Required) Identifier for the managed rule.
+          enabled = optional(string, "enabled") #(Optional) Describes if the managed rule is in enabled state or disabled state.
+          action  = optional(string, "Allow")   # (Optional) Describes the override action to be applied when rule matches. Possible values are Allow, AnomalyScoring, Block, JSChallenge and Log. JSChallenge is only valid for rulesets of type Microsoft_BotManagerRuleSet.
+        })))
+      })))
+
+    }), []))
+  }))
 }
