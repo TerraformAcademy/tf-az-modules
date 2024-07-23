@@ -83,9 +83,3 @@ variable "schedule" {
     })), [])
   }))
 }
-
-provider "azurerm" {
-  features {
-
-  }
-}
