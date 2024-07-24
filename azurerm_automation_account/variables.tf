@@ -63,6 +63,8 @@ variable "runbook" {
       run_on        = optional(string, null)
     })))
   }))
+
+  default = {}
 }
 
 variable "schedule" {
@@ -82,4 +84,6 @@ variable "schedule" {
       occurrence = number
     })), [])
   }))
+
+  default = {}
 }
