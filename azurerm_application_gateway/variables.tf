@@ -41,7 +41,7 @@ variable "backend_http_settings" {
     trusted_root_certificate_names = optional(list(string))
   }))
 
-  description = "value"
+  description = "(Required) One or more backend_http_settings blocks as defined below."
 }
 
 variable "frontend_ip_configuration" {
@@ -54,7 +54,7 @@ variable "frontend_ip_configuration" {
     private_link_configuration_name = optional(string)
   }))
 
-  description = "value"
+  description = "(Required) One or more frontend_ip_configuration blocks as defined below."
 }
 
 variable "frontend_port" {
@@ -62,6 +62,7 @@ variable "frontend_port" {
     name = string
     port = number
   }))
+  description = "(Required) One or more frontend_port blocks as defined below."
 }
 
 variable "gateway_ip_configuration" {
@@ -69,7 +70,7 @@ variable "gateway_ip_configuration" {
     name      = string
     subnet_id = string
   }))
-  description = "value"
+  description = "(Required) One or more gateway_ip_configuration blocks as defined below."
 }
 
 variable "http_listener" {
@@ -90,7 +91,7 @@ variable "http_listener" {
     ssl_profile_name   = optional(string)
   }))
 
-  description = "value"
+  description = "(Required) One or more http_listener blocks as defined below."
 }
 
 variable "request_routing_rule" {
@@ -105,6 +106,7 @@ variable "request_routing_rule" {
     url_path_map_name           = optional(string)
     priority                    = optional(number)
   }))
+  description = "(Required) One or more request_routing_rule blocks as defined below."
 }
 
 variable "sku" {
@@ -113,6 +115,7 @@ variable "sku" {
     tier     = string
     capacity = number
   })
+  description = "(Required) A sku block as defined below."
 }
 
 variable "fips_enabled" {
@@ -127,7 +130,8 @@ variable "global" {
     response_buffering_enabled = bool #(Required) Whether Application Gateway's Response buffer is enabled.
   }))
 
-  default = []
+  default     = []
+  description = "(Optional) A global block as defined below."
 }
 
 variable "identity" {
@@ -135,8 +139,8 @@ variable "identity" {
     type         = string #(Required) Specifies the type of Managed Service Identity that should be configured on this Application Gateway. Only possible value is UserAssigned.
     identity_ids = string #(Required) Specifies a list of User Assigned Managed Identity IDs to be assigned to this Application Gateway.
   }))
-
-  default = []
+  description = "(Optional) An identity block as defined below."
+  default     = []
 }
 
 variable "private_link_configuration" {
@@ -151,7 +155,8 @@ variable "private_link_configuration" {
     }))
 
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more private_link_configuration blocks as defined below."
 }
 
 variable "zones" {
@@ -165,7 +170,8 @@ variable "trusted_client_certificate" {
     name = string #(Required) The name of the Trusted Client Certificate that is unique within this Application Gateway.
     data = string #(Required) The base-64 encoded certificate.
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more trusted_client_certificate blocks as defined below."
 }
 
 variable "ssl_profile" {
@@ -182,7 +188,8 @@ variable "ssl_profile" {
       min_protocol_version = optional(string, null)     #(Optional) The minimal TLS version. Possible values are TLSv1_0, TLSv1_1, TLSv1_2 and TLSv1_3.
     })))
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more ssl_profile blocks as defined below."
 }
 
 variable "authentication_certificate" {
@@ -190,7 +197,8 @@ variable "authentication_certificate" {
     name = string #(Required) The Name of the Authentication Certificate to use.
     data = string #(Required) The contents of the Authentication Certificate which should be used.
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more authentication_certificate blocks as defined below."
 }
 
 variable "trusted_root_certificate" {
@@ -199,7 +207,8 @@ variable "trusted_root_certificate" {
     data                = string #(Required) The contents of the Trusted Root Certificate which should be used.
     key_vault_secret_id = string #(Optional) The Secret ID of (base-64 encoded unencrypted pfx) Secret or Certificate object stored in Azure KeyVault. You need to enable soft delete for the Key Vault to use this feature. Required if data is not set.
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more trusted_root_certificate blocks as defined below."
 }
 
 variable "ssl_policy" {
@@ -210,7 +219,8 @@ variable "ssl_policy" {
     cipher_suites        = optional(list(string), []) #(Optional) A List of accepted cipher suites.
     min_protocol_version = optional(string, null)     #(Optional) The minimal TLS version. Possible values are TLSv1_0, TLSv1_1, TLSv1_2 and TLSv1_3.
   }))
-  default = []
+  default     = []
+  description = "(Optional) a ssl_policy block as defined below."
 }
 
 variable "enable_http2" {
@@ -243,7 +253,8 @@ variable "probe" {
     minimum_servers = optional(number, 0) #(Optional) The minimum number of servers that are always marked as healthy. 
 
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more probe blocks as defined below."
 }
 
 variable "ssl_certificate" {
@@ -254,7 +265,8 @@ variable "ssl_certificate" {
     key_vault_secret_id = optional(string, null) #(Optional) The Secret ID of (base-64 encoded unencrypted pfx) the Secret or Certificate object stored in Azure KeyVault. You need to enable soft delete for Key Vault to use this feature. Required if data is not set.
 
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more ssl_certificate blocks as defined below."
 }
 
 variable "tags" {
@@ -327,7 +339,8 @@ variable "redirect_configuration" {
     include_path         = optional(string, null) #(Optional) Whether to include the path in the redirected URL. 
     include_query_string = optional(bool, false)  #(Optional) Whether to include the query string in the redirected URL.
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more redirect_configuration blocks as defined below."
 }
 
 variable "autoscale_configuration" {
@@ -335,7 +348,8 @@ variable "autoscale_configuration" {
     min_capacity = number                 #(Required) Minimum capacity for autoscaling. Accepted values are in the range 0 to 100.
     max_capacity = optional(number, null) #(Optional) Maximum capacity for autoscaling. Accepted values are in the range 2 to 125.
   }))
-  default = []
+  default     = []
+  description = "(Optional) An autoscale_configuration block as defined below."
 }
 
 variable "rewrite_rule_set" {
@@ -370,7 +384,8 @@ variable "rewrite_rule_set" {
 
     })), [])
   }))
-  default = []
+  default     = []
+  description = "(Optional) One or more rewrite_rule_set blocks as defined below. Only valid for v2 SKUs."
 }
 
 # WAF Variables 
@@ -385,12 +400,12 @@ variable "custom_rules" {
       match_variables = set(object({
         variable_name = string           # (Required) The name of the Match Variable. Possible values are RemoteAddr, RequestMethod, QueryString, PostArgs, RequestUri, RequestHeaders, RequestBody and RequestCookies.
         selector      = optional(string) # (Optional) Describes field of the matchVariable collection
-      }), [])
+      }))
       match_values       = optional(list(string))     # (Optional) A list of match values. This is Required when the operator is not Any.
       operator           = string                     # (Required) Describes operator to be matched. Possible values are Any, IPMatch, GeoMatch, Equal, Contains, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, BeginsWith, EndsWith and Regex.
       negation_condition = optional(bool, false)      # (Optional) Describes if this is negate condition or not
       transforms         = optional(list(string), []) # A list of transformations to do before the match is attempted. Possible values are HtmlEntityDecode, Lowercase, RemoveNulls, Trim, UrlDecode and UrlEncode.
-    }), [])                                           # Required) One or more match_conditions blocks as defined below.
+    }))                                               # Required) One or more match_conditions blocks as defined below.
 
     action               = string                 # (Required) Type of action. Possible values are Allow, Block and Log.
     rate_limit_duration  = optional(string, null) # (Optional) Specifies the duration at which the rate limit policy will be applied. Should be used with RateLimitRule rule type. Possible values are FiveMins and OneMin.
@@ -399,12 +414,14 @@ variable "custom_rules" {
 
   }))
 
-  default = []
+  default     = []
+  description = "One or more custom_rules blocks."
 }
+
 
 variable "policy_settings" {
   type = set(object({
-    enabled                     = optional(bool, true)           # (Optional) Describes if the policy is in enabled state or disabled state. 
+    enabled                     = optional(bool, true)           # (Optional) Describes if the policy is in enabled state or disabled state.
     mode                        = optional(string, "Prevention") # (Optional) Describes if it is in detection mode or prevention mode at the policy level. Valid values are Detection and Prevention. Defaults to Prevention.
     file_upload_limit_in_mb     = optional(number, 100)          # (Optional) The File Upload Limit in MB. Accepted values are in the range 1 to 4000.
     request_body_check          = optional(bool, true)           # Optional) Is Request Body Inspection enabled?
@@ -417,11 +434,10 @@ variable "policy_settings" {
         selector_match_operator = optional(string, null) #(Optional) Specifies the operating on the selector. Possible values are Equals and EqualsAny. Defaults to Equals.
         selector                = optional(string, null) # (Optional) Specifies which elements in the collection this rule applies to.
       })), [])
-    }), []))
-    request_body_inspect_limit_in_kb = optional(number, 128) # (Optional) Specifies the maximum request body inspection limit in KB for the Web Application Firewall.
-  }), [])
-
-  default = []
+    })), [])
+  }))
+  description = "(Optional) A policy_settings block as defined below."
+  default     = []
 }
 
 variable "managed_rules" {
@@ -440,18 +456,19 @@ variable "managed_rules" {
       })), [])
     })), [])
 
-    managed_rule_set = optional(set(object({
+    managed_rule_set = set(object({
       type    = optional(string, "OWASP") # (Optional) The rule set type. The only possible value include Microsoft_BotManagerRuleSet, Microsoft_DefaultRuleSet and OWASP. Defaults to OWASP.
-      version = string                    # (Required) The rule set version. The only possible value include 2.1 (for rule set type Microsoft_DefaultRuleSet) and 3.2 (for rule set type OWASP). 
+      version = string
       rule_group_override = optional(set(object({
         rule_group_name = string # (Required) The name of the Rule Group.
         rule = optional(set(object({
           id      = string                      # (Required) Identifier for the managed rule.
           enabled = optional(string, "enabled") #(Optional) Describes if the managed rule is in enabled state or disabled state.
           action  = optional(string, "Allow")   # (Optional) Describes the override action to be applied when rule matches. Possible values are Allow, AnomalyScoring, Block, JSChallenge and Log. JSChallenge is only valid for rulesets of type Microsoft_BotManagerRuleSet.
-        })))
-      })))
-
-    }), []))
+        })), [])
+      })), [])
+    }))
   }))
+
+  description = "(Required) A managed_rules blocks as defined below."
 }

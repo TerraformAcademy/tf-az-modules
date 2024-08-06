@@ -76,7 +76,7 @@ resource "azurerm_web_application_firewall_policy" "this" {
             content {
               type    = excluded_rule_set.value["type"]
               version = excluded_rule_set.value["type"]
-              dynamic "rule_group " {
+              dynamic "rule_group" {
                 for_each = excluded_rule_set.value["rule_group"]
                 content {
                   rule_group_name = rule_group.value["rule_group_name"]
