@@ -1,6 +1,6 @@
 output "id" {
   value       = azurerm_application_gateway.this.id
-  description = "value"
+  description = "The ID of the Application Gateway."
 }
 
 output "authentication_certificate" {
@@ -71,4 +71,19 @@ output "custom_error_configuration" {
 output "redirect_configuration" {
   value       = azurerm_application_gateway.this.redirect_configuration
   description = "A list of redirect_configuration blocks."
+}
+
+output "waf_id" {
+  value       = azurerm_web_application_firewall_policy.this.id
+  description = "The ID of the Web Application Firewall Policy."
+}
+
+output "http_listener_ids" {
+  value       = azurerm_web_application_firewall_policy.this.http_listener_ids
+  description = "A list of HTTP Listener IDs from an azurerm_application_gateway."
+}
+
+output "path_based_rule_ids" {
+  value       = azurerm_web_application_firewall_policy.this.id
+  description = "A list of URL Path Map Path Rule IDs from an azurerm_application_gateway."
 }

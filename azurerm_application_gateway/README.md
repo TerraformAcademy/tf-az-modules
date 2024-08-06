@@ -76,7 +76,7 @@ No modules.
 | <a name="output_frontend_port"></a> [frontend\_port](#output\_frontend\_port) | A list of frontend\_port blocks |
 | <a name="output_gateway_ip_configuration"></a> [gateway\_ip\_configuration](#output\_gateway\_ip\_configuration) | A list of gateway\_ip\_configuration blocks. |
 | <a name="output_http_listener"></a> [http\_listener](#output\_http\_listener) | A list of http\_listener blocks. |
-| <a name="output_id"></a> [id](#output\_id) | value |
+| <a name="output_id"></a> [id](#output\_id) | The ID of the Application Gateway. |
 | <a name="output_private_endpoint_connection"></a> [private\_endpoint\_connection](#output\_private\_endpoint\_connection) | A list of private\_endpoint\_connection blocks. |
 | <a name="output_private_link_configuration"></a> [private\_link\_configuration](#output\_private\_link\_configuration) | A list of private\_link\_configuration blocks. |
 | <a name="output_probe"></a> [probe](#output\_probe) | A probe block. |
