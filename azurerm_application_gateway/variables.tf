@@ -390,6 +390,17 @@ variable "rewrite_rule_set" {
 
 # WAF Variables 
 
+variable "create_waf" {
+  type = bool
+  default = false
+  description = "(Optional) Wheather to create a web application firewall or not."
+}
+
+variable "waf_name" {
+  type = string
+  description = "(Required) Name of the web application firewall policy."
+}
+
 variable "custom_rules" {
   type = set(object({
     enabled   = optional(bool, true)   # (Optional) Describes if the policy is in enabled state or disabled state.
@@ -471,4 +482,6 @@ variable "managed_rules" {
   }))
 
   description = "(Required) A managed_rules blocks as defined below."
+
+default = [] # Set deafult to [] to avoid required even when create_waf is false. 
 }

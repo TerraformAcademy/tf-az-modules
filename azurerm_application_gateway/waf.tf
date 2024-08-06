@@ -1,5 +1,6 @@
 resource "azurerm_web_application_firewall_policy" "this" {
-  name                = var.name
+  for_each = var.create_waf ? [1] : []
+  name                = var.waf_name
   resource_group_name = var.resource_group_name
   location            = var.location
 
