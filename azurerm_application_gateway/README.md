@@ -69,6 +69,8 @@ No modules.
 
 | Name | Description |
 |------|-------------|
+| <a name="output_id"></a> [id](#output\_id) | The ID of the Application Gateway. |
+| <a name="output_waf_id"></a> [waf\_id](#output\_waf\_id) | The ID of the Web Application Firewall Policy. |
 | <a name="output_authentication_certificate"></a> [authentication\_certificate](#output\_authentication\_certificate) | A list of authentication\_certificate blocks. |
 | <a name="output_backend_http_settings"></a> [backend\_http\_settings](#output\_backend\_http\_settings) | A list of backend\_http\_settings blocks. |
 | <a name="output_custom_error_configuration"></a> [custom\_error\_configuration](#output\_custom\_error\_configuration) | A list of custom\_error\_configuration blocks. |
@@ -76,25 +78,6 @@ No modules.
 | <a name="output_frontend_port"></a> [frontend\_port](#output\_frontend\_port) | A list of frontend\_port blocks |
 | <a name="output_gateway_ip_configuration"></a> [gateway\_ip\_configuration](#output\_gateway\_ip\_configuration) | A list of gateway\_ip\_configuration blocks. |
 | <a name="output_http_listener"></a> [http\_listener](#output\_http\_listener) | A list of http\_listener blocks. |
-| <a name="output_id"></a> [id](#output\_id) | The ID of the Application Gateway. |
-| <a name="output_private_endpoint_connection"></a> [private\_endpoint\_connection](#output\_private\_endpoint\_connection) | A list of private\_endpoint\_connection blocks. |
-| <a name="output_private_link_configuration"></a> [private\_link\_configuration](#output\_private\_link\_configuration) | A list of private\_link\_configuration blocks. |
-| <a name="output_probe"></a> [probe](#output\_probe) | A probe block. |
-| <a name="output_redirect_configuration"></a> [redirect\_configuration](#output\_redirect\_configuration) | A list of redirect\_configuration blocks. |
-| <a name="output_request_routing_rule"></a> [request\_routing\_rule](#output\_request\_routing\_rule) | A list of request\_routing\_rule blocks. |
-| <a name="output_ssl_certificate"></a> [ssl\_certificate](#output\_ssl\_certificate) | A list of ssl\_certificate blocks. |
-| <a name="output_url_path_map"></a> [url\_path\_map](#output\_url\_path\_map) | A list of url\_path\_map blocks. |
-
-| Name | Description |
-|------|-------------|
-| <a name="output_authentication_certificate "></a> [authentication\_certificate ](#output\_authentication\_certificate ) | A list of authentication\_certificate blocks. |
-| <a name="output_backend_http_settings"></a> [backend\_http\_settings](#output\_backend\_http\_settings) | A list of backend\_http\_settings blocks. |
-| <a name="output_custom_error_configuration"></a> [custom\_error\_configuration](#output\_custom\_error\_configuration) | A list of custom\_error\_configuration blocks. |
-| <a name="output_frontend_ip_configuration"></a> [frontend\_ip\_configuration](#output\_frontend\_ip\_configuration) | A list of frontend\_ip\_configuration blocks. |
-| <a name="output_frontend_port"></a> [frontend\_port](#output\_frontend\_port) | A list of frontend\_port blocks |
-| <a name="output_gateway_ip_configuration"></a> [gateway\_ip\_configuration](#output\_gateway\_ip\_configuration) | A list of gateway\_ip\_configuration blocks. |
-| <a name="output_http_listener"></a> [http\_listener](#output\_http\_listener) | A list of http\_listener blocks. |
-| <a name="output_id"></a> [id](#output\_id) | value |
 | <a name="output_private_endpoint_connection"></a> [private\_endpoint\_connection](#output\_private\_endpoint\_connection) | A list of private\_endpoint\_connection blocks. |
 | <a name="output_private_link_configuration"></a> [private\_link\_configuration](#output\_private\_link\_configuration) | A list of private\_link\_configuration blocks. |
 | <a name="output_probe"></a> [probe](#output\_probe) | A probe block. |
