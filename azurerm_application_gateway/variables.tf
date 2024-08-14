@@ -39,6 +39,10 @@ variable "backend_http_settings" {
       name = string
     })), [])
     trusted_root_certificate_names = optional(list(string))
+    connection_draining = optional(set(object({
+      enabled           = bool   # (Required) If connection draining is enabled or not.
+      drain_timeout_sec = number # (Required) The number of seconds connection draining is active. Acceptable values are from 1 second to 3600 seconds.
+    })), [])
   }))
 
   description = "(Required) One or more backend_http_settings blocks as defined below."
