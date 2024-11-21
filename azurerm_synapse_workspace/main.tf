@@ -5,7 +5,7 @@ resource "azurerm_synapse_workspace" "synapse" {
   storage_data_lake_gen2_filesystem_id = var.storage_data_lake_gen2_filesystem_id
   sql_administrator_login              = var.sql_administrator_login
   sql_administrator_login_password     = var.sql_administrator_password
-  public_network_access_enabled        = var.saas_connection
+  public_network_access_enabled        = var.public_network_access_enabled 
   managed_virtual_network_enabled      = true
   linking_allowed_for_aad_tenant_ids   = var.linking_allowed_for_aad_tenant_ids
   compute_subnet_id                    = var.compute_subnet_id
