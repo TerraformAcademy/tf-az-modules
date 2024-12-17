@@ -1,3 +1,7 @@
+variable "name" {
+  type = string
+ }
+
 variable "action_gorup" {
   type = map(object({
     name                = string
