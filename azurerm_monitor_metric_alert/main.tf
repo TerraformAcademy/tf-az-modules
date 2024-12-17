@@ -46,7 +46,7 @@ resource "azurerm_monitor_metric_alert" "this" {
       metric_name       = criteria.value["metric_name"]
       aggregation       = criteria.value["aggregation"]
       operator          = criteria.value["operator"]
-      alert_sensitivity = criteria.value["alert_sensitivity"]
+      threshold         = criteria.value["threshold"]
 
       dynamic "dimension" {
         for_each = criteria.value["dimension"]
