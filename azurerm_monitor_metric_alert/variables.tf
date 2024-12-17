@@ -33,6 +33,7 @@ variable "criteria" {
     aggregation       = string
     operator          = string
     alert_sensitivity = string
+    threshold         = number
     dimension = optional(set(object({
       name     = string
       operator = string
