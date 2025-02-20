@@ -1,3 +1,11 @@
+variable "name" {
+  type = string
+ }
+
+variable "resource_group_name" {
+  type = string
+}
+
 variable "action_gorup" {
   type = map(object({
     name                = string
@@ -28,7 +36,7 @@ variable "criteria" {
     metric_name       = string
     aggregation       = string
     operator          = string
-    alert_sensitivity = string
+    threshold         = number
     dimension = optional(set(object({
       name     = string
       operator = string
