@@ -20,7 +20,7 @@ output "frontend_ip_configuration" {
 
 output "frontend_port" {
   value       = azurerm_application_gateway.this.frontend_port
-  description = " A list of frontend_port blocks"
+  description = "A list of frontend_port blocks."
 }
 
 output "gateway_ip_configuration" {
@@ -40,7 +40,7 @@ output "private_endpoint_connection" {
 
 output "private_link_configuration" {
   value       = azurerm_application_gateway.this.private_link_configuration
-  description = " A list of private_link_configuration blocks."
+  description = "A list of private_link_configuration blocks."
 }
 
 output "probe" {
@@ -60,7 +60,7 @@ output "ssl_certificate" {
 
 output "url_path_map" {
   value       = azurerm_application_gateway.this.url_path_map
-  description = " A list of url_path_map blocks."
+  description = "A list of url_path_map blocks."
 }
 
 output "custom_error_configuration" {
@@ -74,16 +74,16 @@ output "redirect_configuration" {
 }
 
 output "waf_id" {
-  value       = azurerm_web_application_firewall_policy.this.id
+  value       = azurerm_web_application_firewall_policy.this.*.id
   description = "The ID of the Web Application Firewall Policy."
 }
 
 output "http_listener_ids" {
-  value       = azurerm_web_application_firewall_policy.this.http_listener_ids
+  value       = azurerm_web_application_firewall_policy.this.*.http_listener_ids
   description = "A list of HTTP Listener IDs from an azurerm_application_gateway."
 }
 
 output "path_based_rule_ids" {
-  value       = azurerm_web_application_firewall_policy.this.id
+  value       = azurerm_web_application_firewall_policy.this.*.path_based_rule_ids
   description = "A list of URL Path Map Path Rule IDs from an azurerm_application_gateway."
 }
