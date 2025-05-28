@@ -392,7 +392,7 @@ resource "azurerm_application_gateway" "this" {
 }
 
 resource "azurerm_web_application_firewall_policy" "this" {
-  count               = var.create_waf ? 1 : 0
+  count               = var.create_waf ? [1] : []
   name                = var.waf_name
   resource_group_name = var.resource_group_name
   location            = var.location
