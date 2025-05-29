@@ -1,0 +1,251 @@
+# .github/workflows/ci-cd.yml
+name: CI-CD Pipeline
+
+on:
+  push:
+    branches:
+      - stg
+
+jobs:
+  build-webapi:
+    name: Build WebAPI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET 6
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Build WebAPI
+        run: |
+          cd WebAPI
+          dotnet restore
+          dotnet build
+
+      - name: Test WebAPI
+        run: |
+          cd Tests.WebAPI
+          dotnet test
+
+  build-portal:
+    name: Build PortalApp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+
+      - name: Azure Key Vault - Get Secrets
+        uses: azure/actions/keyvault-secrets@v1
+        with:
+          keyvault: ${{ secrets.KEY_VAULT }}
+          secrets: id-rsa
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ID_RSA }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+
+      - name: Authenticate npm
+        run: |
+          cp ./PortalApp/ClientApp/.npmrc.template ./PortalApp/ClientApp/.npmrc
+
+      - name: Install dependencies
+        run: |
+          cd PortalApp/ClientApp
+          npm install
+
+      - name: Apply prod config
+        run: |
+          cd PortalApp/ClientApp/src/config
+          rm webapi.config.ts
+          mv webapi.config.prod.ts webapi.config.ts
+
+      - name: Build PortalApp
+        run: |
+          cd PortalApp/ClientApp
+          npm run build
+
+      - name: Copy docker files
+        run: |
+          mkdir -p ${{ github.workspace }}/staging/docker
+          cp -r ./PortalApp/ClientApp/docker/* ${{ github.workspace }}/staging/docker/
+
+      - name: Copy dist files
+        run: |
+          mkdir -p ${{ github.workspace }}/staging/dist
+          cp -r ./PortalApp/ClientApp/dist/* ${{ github.workspace }}/staging/dist/
+
+      - name: Docker build and push
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - run: |
+          docker build -t portal:${{ github.run_id }} -t portal:latest -f ${{ github.workspace }}/staging/docker/Dockerfile ${{ github.workspace }}/staging
+          docker push portal:${{ github.run_id }}
+          docker push portal:latest
+
+      - name: Update Portal Container App
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az extension add --name containerapp --upgrade
+            az containerapp revision copy --name ${{ secrets.PORTAL_CAPP }} --resource-group ${{ secrets.RESOURCE_GROUP }} --image ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_id }}
+
+  build-designer:
+    name: Build DesignerApp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16.x'
+
+      - name: Azure Key Vault - Get Secrets
+        uses: azure/actions/keyvault-secrets@v1
+        with:
+          keyvault: ${{ secrets.KEY_VAULT }}
+          secrets: id-rsa
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ID_RSA }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+
+      - name: Authenticate npm
+        run: |
+          cp ./DesignerApp/TaskPane/.npmrc.template ./DesignerApp/TaskPane/.npmrc
+
+      - name: Replace manifest and config
+        run: |
+          cd DesignerApp/TaskPane
+          rm manifest.xml
+          mv manifest.stg.xml manifest.xml
+          cd src/config
+          rm webapi.config.ts
+          mv webapi.config.prod.ts webapi.config.ts
+
+      - name: Install dependencies
+        run: |
+          cd DesignerApp/TaskPane
+          npm install
+
+      - name: Build project
+        run: |
+          cd DesignerApp/TaskPane
+          export NODE_OPTIONS=--max-old-space-size=4096
+          npm run build
+
+      - name: Copy docker files
+        run: |
+          mkdir -p ${{ github.workspace }}/staging/docker
+          cp -r ./DesignerApp/TaskPane/docker/* ${{ github.workspace }}/staging/docker/
+
+      - name: Copy dist files
+        run: |
+          mkdir -p ${{ github.workspace }}/staging/dist
+          cp -r ./DesignerApp/TaskPane/dist/* ${{ github.workspace }}/staging/dist/
+
+      - run: |
+          docker build -t designer:${{ github.run_id }} -t designer:latest -f ${{ github.workspace }}/staging/docker/Dockerfile ${{ github.workspace }}/staging
+          docker push designer:${{ github.run_id }}
+          docker push designer:latest
+
+      - name: Update Designer Container App
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az extension add --name containerapp --upgrade
+            az containerapp revision copy --name ${{ secrets.DESIGNER_CAPP }} --resource-group ${{ secrets.RESOURCE_GROUP }} --image ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_id }}
+
+  backend:
+    name: Build and Deploy Backend
+    runs-on: ubuntu-latest
+    needs: [build-webapi, build-portal, build-designer]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Azure Key Vault - Get Secrets
+        uses: azure/actions/keyvault-secrets@v1
+        with:
+          keyvault: ${{ secrets.KEY_VAULT }}
+          secrets: id-rsa
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ID_RSA }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+
+      - name: Modify Dockerfile
+        run: |
+          cd WebAPI
+          git archive --remote=git@bitbucket.org:annalect/devops.git release -- deployment-scripts/azure/secrets-entrypoint-mcs.sh | tar -xO > ../secrets-entrypoint.sh
+          chmod +x ../secrets-entrypoint.sh
+          echo 'COPY secrets-entrypoint.sh /' >> Dockerfile
+          echo 'RUN chmod +x /secrets-entrypoint.sh' >> Dockerfile
+          echo 'COPY appsettings.override.json /app/' >> Dockerfile
+          echo 'CMD ["dotnet", "WebAPI.dll"]' >> Dockerfile
+
+      - name: Docker build and push
+        run: |
+          docker build -t backend:${{ github.run_id }} -t backend:latest -f WebAPI/Dockerfile .
+          docker push backend:${{ github.run_id }}
+          docker push backend:latest
+
+      - name: Update Backend Container App
+        uses: azure/cli@v1
+        with:
+          inlineScript: |
+            az extension add --name containerapp --upgrade
+            az containerapp revision copy --name ${{ secrets.BACKEND_CAPP }} --resource-group ${{ secrets.RESOURCE_GROUP }} --image ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.run_id }}
+
+  dbmigration:
+    name: DB Migration
+    runs-on: windows-latest
+    needs: backend
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET 6
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Azure Key Vault - Get Secrets
+        uses: azure/actions/keyvault-secrets@v1
+        with:
+          keyvault: ${{ secrets.KEY_VAULT }}
+          secrets: serveroverride
+
+      - name: Prepare config
+        run: |
+          echo ${{ secrets.SERVEROVERRIDE }} | sed 's/.//' | sed 's/.$//' | awk '{gsub(/\\n/,"\n")}1' | sed 's/\"/"/g' > appsettings.override.json
+          mkdir -p WebAPI/scripts
+
+      - name: Restore and generate EF migration script
+        run: |
+          cd WebAPI
+          dotnet tool restore
+          dotnet ef migrations script --context PortalDbContext --output "./scripts/schema.sql" --idempotent
+
+      - name: Deploy DB script
+        uses: azure/sql-action@v2
+        with:
+          connection-string: ${{ secrets.SQL_CONNECTION_STRING }}
+          path: ./WebAPI/scripts/schema.sql
