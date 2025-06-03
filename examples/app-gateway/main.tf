@@ -94,6 +94,19 @@ module "pip" {
   tags                = module.tags.tags
 }
 
+# SSL Cert from KV
+
+data "azurerm_key_vault" "kv" {
+  name                = "mykeyvault"
+  resource_group_name = "some-resource-group"
+}
+
+
+data "azurerm_key_vault_secret" "agw-cert" {
+  name = "certificate" 
+  key_vault_id = data.azurerm_key_vault.kv.id
+}
+
 module "agw" {
   source = "./azurerm-application_gateway"
 
@@ -109,4 +122,29 @@ module "agw" {
   request_routing_rule      = local.app_gw.request_routing_rule
   sku                       = local.app_gw.sku
   tags          = module.tags.tags
+
+# New with ssl 
+
+identity = [ {
+    type = "UserAssigned"
+    identity_ids = [data.azurerm_user_assigned_identity.appgw_identity.id]
+  }
+]
+
+ http_listener = [{
+    name                           = "https-listener"
+    frontend_ip_configuration_name = "appgw-frontend-ip"
+    frontend_port_name             = "https-port"
+    protocol                       = "Https"
+    ssl_certificate_name           = "keyvault-ssl-cert"
+    require_sni                    = true 
+  }
+]
+
+ssl_certificate  = [{
+    name                = "keyvault-ssl-cert"
+    key_vault_secret_id = azurerm_key_vault_secret.agw-cert.id
+  }
+]
+
 }
