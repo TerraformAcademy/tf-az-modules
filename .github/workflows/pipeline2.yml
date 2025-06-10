@@ -1,180 +1,125 @@
-name: Omniflow CI/CD Pipeline
+name: Omniflow CI/CD
 
 on:
   workflow_dispatch:
 
+env:
+  DOTNET_VERSION: '6.0.x'
+  NODE_VERSION: '16.x'
+
 jobs:
-  build-webapi:
-    name: Build WebAPI
+  checkout-and-build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v3
+    - name: Clone Azure DevOps Repo
+      run: |
+        git config --global user.name "GitHubActions"
+        git config --global user.email "actions@github.com"
+        git clone https://${{ secrets.AZURE_DEVOPS_PAT }}@dev.azure.com/YOUR_ORG/YOUR_PROJECT/_git/YOUR_REPO repo
+        ls repo
+      env:
+        AZURE_DEVOPS_PAT: ${{ secrets.AZURE_DEVOPS_PAT }}
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '6.0.x'
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore & Build WebAPI
-        run: |
-          cd WebAPI
-          dotnet restore
-          dotnet build
+    - name: Build WebAPI
+      run: |
+        cd repo/WebAPI
+        dotnet restore
+        dotnet build
 
-      - name: Run WebAPI Tests
-        run: |
-          cd Tests.WebAPI
-          dotnet test
+    - name: Test WebAPI
+      run: |
+        cd repo/Tests.WebAPI
+        dotnet test
 
-  build-portal-app:
-    name: Build Portal App
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+
+    - name: Build PortalApp
+      run: |
+        cd repo/PortalApp/ClientApp
+        npm ci
+        cd src/config && rm webapi.config.ts && mv webapi.config.prod.ts webapi.config.ts
+        cd ..
+        npm run build
+
+    - name: Build DesignerApp
+      run: |
+        cd repo/DesignerApp/TaskPane
+        npm ci
+        rm manifest.xml && mv manifest.stg.xml manifest.xml
+        cd src/config && rm webapi.config.ts && mv webapi.config.prod.ts webapi.config.ts
+        cd ../..
+        export NODE_OPTIONS=--max-old-space-size=4096
+        npm run build
+
+    - name: Upload WebAPI Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WebAPI
+        path: repo/WebAPI
+
+    - name: Upload PortalApp dist
+      uses: actions/upload-artifact@v4
+      with:
+        name: PortalApp-dist
+        path: repo/PortalApp/ClientApp/dist
+
+    - name: Upload DesignerApp dist
+      uses: actions/upload-artifact@v4
+      with:
+        name: DesignerApp-dist
+        path: repo/DesignerApp/TaskPane/dist
+
+  docker-and-deploy:
     runs-on: ubuntu-latest
-    needs: build-webapi
+    needs: checkout-and-build
+
     steps:
-      - uses: actions/checkout@v3
+    - name: Download Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: ./artifacts
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '16'
+    - name: Log in to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: acrflowchartstgeus.azurecr.io
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ID_RSA }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+    - name: Build and Push PortalApp Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./artifacts/PortalApp-dist
+        file: ./artifacts/WebAPI/docker/Dockerfile
+        push: true
+        tags: acrflowchartstgeus.azurecr.io/portal:latest
 
-      - name: npm Authenticate
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ./PortalApp/ClientApp/.npmrc
+    - name: Build and Push DesignerApp Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./artifacts/DesignerApp-dist
+        file: ./artifacts/WebAPI/docker/Dockerfile
+        push: true
+        tags: acrflowchartstgeus.azurecr.io/designer:latest
 
-      - name: Install Dependencies
-        run: |
-          cd PortalApp/ClientApp
-          npm install
+    - name: Build and Push Backend Image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./artifacts/WebAPI
+        file: ./artifacts/WebAPI/Dockerfile
+        push: true
+        tags: acrflowchartstgeus.azurecr.io/backend:latest
 
-      - name: Apply Prod Config
-        run: |
-          cd PortalApp/ClientApp/src/config/
-          mv webapi.config.prod.ts webapi.config.ts
-
-      - name: Build Project
-        run: |
-          cd PortalApp/ClientApp
-          npm run build
-
-      - name: Archive Artifacts
-        run: |
-          mkdir -p artifacts/docker artifacts/dist
-          cp -r PortalApp/ClientApp/docker/* artifacts/docker/
-          cp -r PortalApp/ClientApp/dist/* artifacts/dist/
-
-      - name: Build & Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./artifacts
-          file: ./artifacts/docker/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/portal:latest
-            ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_number }}
-
-      - name: Update Container App
-        run: |
-          az login --service-principal -u ${{ secrets.AZURE_CLIENT_ID }} -p ${{ secrets.AZURE_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az containerapp revision copy \
-            --name ${{ secrets.PORTAL_CAPP }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --image ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_number }}
-
-  build-designer-app:
-    name: Build Designer App
-    runs-on: ubuntu-latest
-    needs: build-webapi
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '16'
-
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ID_RSA }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
-
-      - name: npm Authenticate
-        run: |
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ./DesignerApp/TaskPane/.npmrc
-
-      - name: Configure Manifest & Config
-        run: |
-          cd DesignerApp/TaskPane
-          mv manifest.stg.xml manifest.xml
-          cd src/config && mv webapi.config.prod.ts webapi.config.ts
-
-      - name: Install Dependencies
-        run: |
-          cd DesignerApp/TaskPane
-          npm install
-
-      - name: Build Designer App
-        run: |
-          cd DesignerApp/TaskPane
-          export NODE_OPTIONS=--max-old-space-size=4096
-          npm run build
-
-      - name: Archive Artifacts
-        run: |
-          mkdir -p artifacts/docker artifacts/dist
-          cp -r DesignerApp/TaskPane/docker/* artifacts/docker/
-          cp -r DesignerApp/TaskPane/dist/* artifacts/dist/
-
-      - name: Build & Push Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./artifacts
-          file: ./artifacts/docker/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.ACR_LOGIN_SERVER }}/designer:latest
-            ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_number }}
-
-      - name: Update Designer Container App
-        run: |
-          az containerapp revision copy \
-            --name ${{ secrets.DESIGNER_CAPP }} \
-            --resource-group ${{ secrets.RESOURCE_GROUP }} \
-            --image ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_number }}
-
-  db-migration:
-    name: DB Migration
-    runs-on: ubuntu-latest
-    needs: [build-portal-app, build-designer-app]
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '6.0.x'
-
-      - name: Install EF Tool
-        run: dotnet tool update --global dotnet-ef
-
-      - name: Generate EF Migration Script
-        run: |
-          dotnet ef migrations script \
-            --context PortalDbContext \
-            --output ./schema.sql \
-            --idempotent
-
-      - name: Deploy Migration to Azure SQL
-        uses: azure/sql-action@v2
-        with:
-          connection-string: ${{ secrets.AZURE_SQL_CONNECTION_STRING }}
-          script-path: ./schema.sql
+    - name: Update Azure Container Apps
+      uses: azure/CLI@v1
+      with:
+        azcliversion: 2.55.0
