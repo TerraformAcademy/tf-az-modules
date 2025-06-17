@@ -247,7 +247,7 @@ variable "probe" {
     pick_host_name_from_backend_http_settings = optional(bool, false)  #(Optional) Whether the host header should be picked from the backend HTTP settings. 
     match = optional(set(object({
       body        = optional(string, null)     #(Optional) A snippet from the Response Body which must be present in the Response.
-      status_code = optional(list(number), []) #(Required) A list of allowed status codes for this Health Probe.
+      status_code = optional(list(string), []) #(Required) A list of allowed status codes for this Health Probe.
     })))
     minimum_servers = optional(number, 0) #(Optional) The minimum number of servers that are always marked as healthy. 
 
