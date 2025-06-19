@@ -89,12 +89,12 @@ def get_weather_webhook(request):
         "fulfillment_response": {
             "messages": [
                 {
-                    "text": {
-                        "text": [
-                            f"Weather in {city} — Temp: {response_payload['temperature']}, "
-                            f"Wind: {response_payload['wind']}, Rain: {response_payload['rain']}"
-                        ]
-                    }
+                   # "text": {
+                     #   "text": [
+                    #        f"Weather in {city} — Temp: {response_payload['temperature']}, "
+                    #        f"Wind: {response_payload['wind']}, Rain: {response_payload['rain']}"
+                     #   ]
+                    #} 
                 }
             ]
         },
@@ -102,7 +102,8 @@ def get_weather_webhook(request):
             "parameters": {
                 "temperature": response_payload["temperature"],
                 "wind": response_payload["wind"],
-                "rain": response_payload["rain"]
+                "rain": response_payload["rain"],
+                "payload2" : response_payload
             }
         }
     })
