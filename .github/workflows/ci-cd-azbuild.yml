@@ -1,6 +1,7 @@
 name: CI/CD Pipeline Az Conatainer Apps
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - stg
