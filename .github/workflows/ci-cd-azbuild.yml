@@ -1,0 +1,296 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - stg
+
+jobs:
+  # ================================================
+  # 1️⃣ Build and Test WebAPI
+  # ================================================
+  build-webapi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore ./WebAPI
+
+      - name: Build WebAPI
+        run: dotnet build --configuration Release ./WebAPI
+
+      - name: Test WebAPI
+        run: dotnet test --configuration Release ./Tests.WebAPI
+
+      - name: Upload WebAPI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webapi
+          path: |
+            WebAPI/**
+            !WebAPI/bin/**/ref
+            Tests.WebAPI/**
+
+  # ================================================
+  # 2️⃣ Build Portal App
+  # ================================================
+  build-portal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+
+      # If using private npm registry:
+      - name: Authenticate npm
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NODE_AUTH_TOKEN }}" > ~/.npmrc
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: PortalApp/ClientApp
+
+      - name: Apply production config
+        run: |
+          rm webapi.config.ts
+          mv webapi.config.prod.ts webapi.config.ts
+        working-directory: PortalApp/ClientApp/src/config
+
+      - name: Build Portal App
+        run: npm run build
+        working-directory: PortalApp/ClientApp
+
+      - name: Upload PortalApp artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: portalapp
+          path: |
+            PortalApp/ClientApp/dist
+            PortalApp/ClientApp/docker
+
+  # ================================================
+  # 3️⃣ Build Designer App
+  # ================================================
+  build-designer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16'
+
+      # If using private npm registry:
+      - name: Authenticate npm
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NODE_AUTH_TOKEN }}" > ~/.npmrc
+
+      - name: Apply manifest
+        run: |
+          rm manifest.xml
+          mv manifest.stg.xml manifest.xml
+        working-directory: DesignerApp/TaskPane
+
+      - name: Apply production config
+        run: |
+          rm webapi.config.ts
+          mv webapi.config.prod.ts webapi.config.ts
+        working-directory: DesignerApp/TaskPane/src/config
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: DesignerApp/TaskPane
+
+      - name: Build Designer App
+        run: |
+          export NODE_OPTIONS=--max-old-space-size=4096
+          npm run build
+        working-directory: DesignerApp/TaskPane
+
+      - name: Upload DesignerApp artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: designerapp
+          path: |
+            DesignerApp/TaskPane/dist
+            DesignerApp/TaskPane/docker
+
+  # ================================================
+  # 4️⃣ Build & Push Docker Images + Update Container Apps
+  # ================================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs:
+      - build-webapi
+      - build-portal
+      - build-designer
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download WebAPI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: webapi
+          path: ./WebAPI
+
+      - name: Download PortalApp artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: portalapp
+          path: ./PortalApp/ClientApp
+
+      - name: Download DesignerApp artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: designerapp
+          path: ./DesignerApp/TaskPane
+
+      # ===================================
+      # Azure Authentication
+      # ===================================
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      # This logs in using the service principal
+
+      # ===================================
+      # Fetch secrets from Key Vault
+      # ===================================
+      - name: Download appsettings.override.json
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az keyvault secret download \
+              --vault-name ${{ secrets.KEY_VAULT_NAME }} \
+              --name serveroverride \
+              --file appsettings.override.json \
+              --encoding utf-8
+
+      # ===================================
+      # Login to ACR
+      # ===================================
+      - name: Login to Azure Container Registry
+        run: az acr login --name ${{ secrets.ACR_LOGIN_SERVER }}
+
+      # ===================================
+      # Build and Push Portal Image
+      # ===================================
+      - name: Build & Push Portal Docker image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_number }} -t ${{ secrets.ACR_LOGIN_SERVER }}/portal:latest -f PortalApp/ClientApp/docker/Dockerfile ./PortalApp/ClientApp
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_number }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/portal:latest
+
+      # ===================================
+      # Update Portal Container App
+      # ===================================
+      - name: Update Portal Container App
+        run: |
+          az extension add --name containerapp --upgrade
+          az containerapp revision copy \
+            --name ${{ secrets.PORTAL_CAPP }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/portal:${{ github.run_number }}
+
+      # ===================================
+      # Build and Push Designer Image
+      # ===================================
+      - name: Build & Push Designer Docker image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_number }} -t ${{ secrets.ACR_LOGIN_SERVER }}/designer:latest -f DesignerApp/TaskPane/docker/Dockerfile ./DesignerApp/TaskPane
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_number }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/designer:latest
+
+      # ===================================
+      # Update Designer Container App
+      # ===================================
+      - name: Update Designer Container App
+        run: |
+          az containerapp revision copy \
+            --name ${{ secrets.DESIGNER_CAPP }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/designer:${{ github.run_number }}
+
+      # ===================================
+      # Build and Push Backend Image
+      # ===================================
+      - name: Build & Push Backend Docker image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.run_number }} -t ${{ secrets.ACR_LOGIN_SERVER }}/backend:latest -f WebAPI/Dockerfile ./WebAPI
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.run_number }}
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/backend:latest
+
+      # ===================================
+      # Update Backend Container App
+      # ===================================
+      - name: Update Backend Container App
+        run: |
+          az containerapp revision copy \
+            --name ${{ secrets.BACKEND_CAPP }} \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --image ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.run_number }}
+
+  # ================================================
+  # 5️⃣ Database Migration
+  # ================================================
+  db-migrate:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '6.0.x'
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Download appsettings.override.json
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az keyvault secret download \
+              --vault-name ${{ secrets.KEY_VAULT_NAME }} \
+              --name serveroverride \
+              --file appsettings.override.json \
+              --encoding utf-8
+
+      - name: Restore dependencies
+        run: dotnet restore ./WebAPI
+
+      - name: Install EF Core tools
+        run: dotnet tool update --global dotnet-ef
+
+      - name: Generate migration script
+        run: |
+          dotnet ef migrations script \
+            --project ./WebAPI \
+            --context PortalDbContext \
+            --output ./schema.sql \
+            --idempotent
+
+      - name: Deploy migration script
+        uses: azure/sql-action@v2
+        with:
+          connection-string: "Server=tcp:${{ secrets.SQL_SERVER }},1433;Initial Catalog=${{ secrets.SQL_DB }};Persist Security Info=False;User ID=${{ secrets.SQL_USERNAME }};Password=${{ secrets.SQL_PASSWORD }};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+          path: ./schema.sql
