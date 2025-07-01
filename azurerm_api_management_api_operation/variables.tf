@@ -112,6 +112,8 @@ variable "request" {
     })), [])
 
   }))
+
+default = []
 }
 
 variable "response" {
