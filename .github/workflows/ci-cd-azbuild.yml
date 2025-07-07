@@ -230,6 +230,27 @@ jobs:
       # ===================================
       # Build and Push Backend Image
       # ===================================
+      - name: Update Dockerfile with Entrypoint and secrets
+        run: |
+          # Create SSH directory and known hosts for Bitbucket
+          mkdir -p ~/.ssh
+          echo "${{ secrets.BITBUCKET_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan bitbucket.org >> ~/.ssh/known_hosts
+      
+          # Download secrets-entrypoint.sh
+          git archive --remote=git@bitbucket.org:annalect/devops.git release -- deployment-scripts/azure/secrets-entrypoint-mcs.sh | tar -xO > WebAPI/secrets-entrypoint.sh
+          chmod +x WebAPI/secrets-entrypoint.sh
+      
+          # Update Dockerfile
+          sed -i '/CMD/d' WebAPI/Dockerfile
+          echo "" >> WebAPI/Dockerfile
+          echo "### DEVOPS CODE INJECTION" >> WebAPI/Dockerfile
+          echo 'COPY secrets-entrypoint.sh /' >> WebAPI/Dockerfile
+          echo 'RUN chmod +x /secrets-entrypoint.sh' >> WebAPI/Dockerfile
+          echo 'COPY appsettings.override.json /app/' >> WebAPI/Dockerfile
+          echo 'CMD ["dotnet", "WebAPI.dll"]' >> WebAPI/Dockerfile
+
       - name: Build & Push Backend Docker image
         run: |
           docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/backend:${{ github.run_number }} -t ${{ secrets.ACR_LOGIN_SERVER }}/backend:latest -f WebAPI/Dockerfile ./WebAPI
