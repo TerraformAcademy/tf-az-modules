@@ -11,7 +11,7 @@ resource "azurerm_cognitive_account_project" "this" {
     for_each = var.identity_type != null ? [var.identity_type] : []
     content {
       type         = var.identity_type
-      identity_ids = length(var.identity_ids) > 0 ? var.identity_ids : []
+      identity_ids = length(var.identity_ids) > 0 ? var.identity_ids : null
     }
   }
 

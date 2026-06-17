@@ -34,6 +34,7 @@ variable "tags" {
 variable "identity_type" {
   description = "The identity type for the Cognitive Account Project. Possible values are SystemAssigned, UserAssigned, or SystemAssigned, UserAssigned."
   type        = string
+  default     = null
 }
 
 variable "identity_ids" {
