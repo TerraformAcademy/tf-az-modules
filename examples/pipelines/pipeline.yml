@@ -1,0 +1,138 @@
+name: batr-InfraOps-azcmd-run
+
+parameters:
+
+  - name: targetEnvironment
+    displayName: Select Target Environment
+    type: string
+    default: Dev
+    values:
+      - Dev
+      - Test
+      - Acceptance
+      - Production
+
+  - name: applicationName # The LZ environment to deploy to.
+    type: string
+    values:
+      - batr-app-d-rg
+      - batr-app-t-rg
+      - batr-app-a-rg
+      - batr-app-p-rg
+
+  - name: app_version_number
+    displayName: app_version_number(e.g. 1.1.0)
+    type: string
+    default: '1.1.0'
+
+  - name: poolname
+    displayName: Pool_Name
+    default: 'Private Pool Windows VS2022'
+    type: string
+
+  - name: cmd
+    displayName: Enter the command (Use; to run multiple commands)
+    type: object
+    default: []
+
+  - name: Azcmd
+    displayName: Run Azcmd
+    type: boolean
+    default: false
+    values:
+      - true
+      - false
+
+  - name: Azcli
+    displayName: Run Azclicmd
+    type: boolean
+    default: false
+    values:
+      - true
+      - false
+
+  - name: Bash
+    displayName: Run bash script
+    type: boolean
+    default: false
+    values:
+      - true
+      - false
+
+variables:
+
+  - ${{ if eq(parameters.targetEnvironment, 'Dev') }}:
+    - name: ResourceGroup
+      value: 'batr-app-d-rg'
+
+  - ${{ if eq(parameters.targetEnvironment, 'Test') }}:
+    - name: ResourceGroup
+      value: 'batr-app-t-rg'
+
+  - ${{ if eq(parameters.targetEnvironment, 'Acceptance') }}:
+    - name: ResourceGroup
+      value: 'batr-app-a-rg'
+
+  - ${{ if eq(parameters.targetEnvironment, 'Production') }}:
+    - name: ResourceGroup
+      value: 'batr-app-p-rg'
+
+trigger: none
+
+pool:
+  name: Private Pool Deployment
+
+resources:
+  repositories:
+
+    - repository: pipetemplates
+      type: git
+      name: 'GRD0001045/pita-pipeline-templates'
+
+    - repository: diptemplates
+      type: git
+      name: 'GRD0001007/diptemplates'
+
+stages:
+
+  - ${{ if eq(parameters.Azcli, true) }}:
+    - stage: Run_Azcli_Commands
+      displayName: 'Run_Azcli_Commands'
+      jobs:
+        - job: run_azcli_command
+          steps:
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: $(ResourceGroup)
+                scriptType: 'bash'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  ${{ parameters.cmd }}
+
+  - ${{ if eq(parameters.Azcmd, true) }}:
+    - stage: Run_Azcmd_Commands
+      displayName: 'Run Azcmd Commands'
+      jobs:
+        - job: run_azcmd_command
+          steps:
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: $(ResourceGroup)
+                scriptType: 'ps'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  ${{ parameters.cmd }}
+
+# stages:
+# template: azuredeployment.yml
+# parameters:
+# applicationName: ${{ parameters.applicationName}}
+
+# targetEnvironment: ${{ parameters.targetEnvironment}}
+# azureSubscription: "$(ResourceGroupPrefix) $(ResourceGroupSuffix)"
+# app_version_number: ${{ parameters.app_version_number }}
+# cmd: ${{ parameters.cmd }}
+# poolname: ${{ parameters.poolname }}
+# Azcli: ${{ parameters.Azcli }}
+# Azcmd: ${{ parameters.Azcmd }}
+# Bash: ${{ parameters.Bash }}
