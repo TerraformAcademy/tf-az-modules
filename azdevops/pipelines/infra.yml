@@ -1,0 +1,317 @@
+name: Infra deployment
+
+parameters:
+     -  name: targetEnvironment #The LZ environment to deploy to.
+        type: string
+        default: development 
+        values:
+             -  development
+             -  test
+             -  acceptance
+             - production
+     -  name: sqlaccessApp #The LZ environment to deploy to.
+        type: string
+        default: excelGen
+        values:
+            -  excelGen
+            -  csvGen
+            -  mtGen
+            - rss
+
+
+variables:
+# Variable templates can be used in combination with group variables having pi
+# Where variable groups contain variables which remain the same for all pipeli
+# Variable templates can be defined on a global, stage and job level so specif
+
+   -  template: ./parameter/global.variables.yml
+
+resources:
+    repositories:
+       -   repository: pipetemplates
+           type: git
+           name: 'GRD0001045/pita-pipeline-templates'
+           ref: 'refs/heads/master'
+
+# A pipeline with no CI trigger
+trigger: none
+
+# Don't run against PRs
+pr: none
+
+# Get the agent pool to use from global variables
+pool: Private Pool Deployment Docker
+
+# Stages are used to define your pipeline stages like Build, Create Infrastructure,
+
+stages:
+  - stage: InfraValidation
+    variables:
+      - template: ./parameter/${{ parameters.targetEnvironment }}.variables.yml
+    jobs:
+      - job: InfraValidationBicep
+        displayName: Infra Validation Bicep
+        steps:
+          - checkout: self
+            path: ./s
+
+          - task: AzureCLI@2
+            name: LintingValidationBicep
+            displayName: Linting Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build --file ./template/main.infrastructure.bicep
+
+          - task: AzureCLI@2
+            name: RunWhatIfBicep
+            displayName: Deployment Preview Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(ResourceGroupName) \
+                  --template-file ./template/main.infrastructure.bicep \
+                  --parameters ./parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+
+  - stage: ${{ parameters.targetEnvironment }}_InfraDeployment
+    condition: succeeded()
+    variables:
+      - template: ./parameter/${{ parameters.targetEnvironment }}.variables.yml
+    jobs:
+      - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+          - template: /generic/servicenow/create-change.yml@pipetemplates
+            parameters:
+              app_config_id: $(SnowCI)
+              app_version_number: $(AppVersionNumber)
+              approval_environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+              description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+      - job: InfraDeploymentBicep
+        displayName: Infra Deployment Bicep
+        steps:
+          - checkout: self
+            path: ./s/self
+
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: Deploy Bicep infra template
+            enabled: true
+            name: DeployInfraBicep
+            inputs:
+              action: Create Or Update Resource Group
+              azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
+              csmFile: ./template/main.infrastructure.bicep
+              csmParametersFile: ./parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+              deploymentMode: Incremental
+              deploymentOutputs: resourceGroupDeploymentOutputs
+              deploymentScope: Resource Group
+              resourceGroupName: ${{ variables.ResourceGroupName }}
+              location: ${{ variables.location }}
+              subscriptionId: ${{ variables.SubscriptionId }}
+              templateLocation: Linked artifact
+
+      - ${{ if in(parameters.targetEnvironment, 'development', 'test') }}:
+          - job: CreateSQLDB
+            displayName: Infra Deployment Bicep
+            steps:
+              - checkout: self
+                path: ./s/self
+
+              - task: AzureResourceManagerTemplateDeployment@3
+                displayName: Deploy Bicep infra template
+                enabled: true
+                name: DeployInfraBicep
+                inputs:
+                  action: Create Or Update Resource Group
+                  azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
+                  csmFile: ./template/main.sqldb.bicep
+                  csmParametersFile: ./parameter/bicep.parameters.sql${{ parameters.targetEnvironment }}.json
+                  deploymentMode: Incremental
+                  deploymentOutputs: resourceGroupDeploymentOutputs
+                  deploymentScope: Resource Group
+                  resourceGroupName: ${{ variables.ResourceGroupName }}
+                  location: ${{ variables.location }}
+                  subscriptionId: ${{ variables.SubscriptionId }}
+                  templateLocation: Linked artifact
+
+      - job: Role_assignment
+        displayName: Create Role Assignment FSCP 3.0
+        steps:
+          - task: AzureCLI@2
+            enabled: true
+            name: SetRoleAssignment
+            displayName: Create Azure RBAC Role Assignment
+            inputs:
+              azureSubscription: ${{ variables.serviceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az role assignment create-role 'CBSP Azure App Service Public v2 Troubleshooting [Production]' \
+                  --assignee '${{ variables.rgObjectId }}' --description 'Role assignment ${{ variables.roleDefinitionName }} for ${{ variables.rgObjectId }}' \
+                  --scope '${{ variables.resourceGroupId }}'
+
+      - job: Role_assignment2
+        displayName: Create Role Assignment FSCP 3.0
+        steps:
+          - task: AzureCLI@2
+            enabled: true
+            name: SetRoleAssignment
+            displayName: Create Azure RBAC Role Assignment
+            inputs:
+              azureSubscription: ${{ variables.serviceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az role assignment create --role 'CBSP Azure App Service Public v2 Troubleshooting [Production]' \
+                  --assignee '${{ variables.spnObjectId }}' --description 'Role assignment ${{ variables.roleDefinitionName }} for ${{ variables.spnObjectId }}' \
+                  --scope '${{ variables.resourceGroupId }}'
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      - stage: ${{ parameters.targetEnvironment }}_InfraDeploymentVerification
+        dependsOn: ${{ parameters.targetEnvironment }}_InfraDeployment
+        condition: or(failed(), succeeded('${{ parameters.targetEnvironment }}_InfraDeployment'))
+        displayName: ${{ parameters.targetEnvironment }}-Verification
+        jobs:
+          - deployment: DeploymentVerification_Approval
+            displayName: Verification_Approval
+            environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+          - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+            parameters:
+              close_status: 'Success'
+              depends_on_job: 'DeploymentVerification_Approval'
+
+  - stage: ${{ parameters.targetEnvironment }}_SqlAPIAccess_close_failed_servicenow_change
+    dependsOn:
+      - ${{ parameters.targetEnvironment }}_InfraDeploymentVerification
+    condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_InfraDeploymentVerification')), eq(variables['System.StageAttempt'], 1)))
+    displayName: Close-failed-Servicellow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: 'Failure'
+
+  - ${{ if in(parameters.targetEnvironment, 'development') }}:
+      - stage: DevSpecificinfra
+        condition: succeeded()
+        variables:
+          - template: ./parameter/${{ parameters.targetEnvironment }}.variables.yml
+        jobs:
+          - job: DevSpecificInfra
+            displayName: DevSpecificInfra
+            steps:
+              - checkout: self
+                path: ./s/self
+
+              - task: AzureResourceManagerTemplateDeployment@3
+                displayName: Deploy Bicep infra template
+                enabled: true
+                name: DeployInfraBicep
+                inputs:
+                  action: Create Or Update Resource Group
+                  azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
+                  csmFile: ./template/main.Devinfrastructure.bicep
+                  csmParametersFile: ./parameter/bicep.parameters.only${{ parameters.targetEnvironment }}.json
+                  deploymentMode: Incremental
+                  deploymentOutputs: resourceGroupDeploymentOutputs
+                  deploymentScope: Resource Group
+                  resourceGroupName: ${{ variables.ResourceGroupName }}
+                  location: ${{ variables.location }}
+                  subscriptionId: ${{ variables.SubscriptionId }}
+                  templateLocation: Linked artifact
+
+  - stage: ${{ parameters.targetEnvironment }}_SqlAccessToApi
+    condition: succeeded()
+    variables:
+      - template: ./parameter/${{ parameters.targetEnvironment }}.variables.yml
+    jobs:
+      - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+          - template: /generic/servicenow/create-change.yml@pipetemplates
+            parameters:
+              app_config_id: $(SnowCI)
+              app_version_number: $(AppVersionNumber)
+              approval_environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+              description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+      - ${{ if in(parameters.sqlaccessApp, 'rss') }}:
+          - job: SqlAccessToRss
+            displayName: Give SQL access to RSS Api
+            pool:
+              name: Private Pool Windows VS2019
+            steps:
+              - template: ./template/non-bicep/sql-role-assignment.yml
+                parameters:
+                  serviceConnectionName: ${{ variables.ServiceConnectionName }}
+                  userName: ${{ variables.rssappServiceName }}
+                  sqlServerName: ${{ variables.SqlServerName }}
+                  sqlDatabaseName: ${{ variables.SqlDatabaseName }}
+                  resourceGroupName: ${{ variables.resourceGroupName }}
+                  subscriptionId: ${{ variables.subscriptionId }}
+                  targetRgSpnName: ${{ variables.targetRgSpnName }}
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      - stage: ${{ parameters.targetEnvironment }}_SqlAPIAccessDeploymentVerification
+        dependsOn: ${{ parameters.targetEnvironment }}_SqlAccessToApi
+        condition: or(failed(), succeeded('${{ parameters.targetEnvironment }}_SqlAccessToApi'))
+        displayName: ${{ parameters.targetEnvironment }}-Verification
+        jobs:
+          - deployment: DeploymentVerification_Approval
+            displayName: Verification_Approval
+            environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+          - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+            parameters:
+              close_status: 'Success'
+              depends_on_job: 'DeploymentVerification_Approval'
+
+  - stage: ${{ parameters.targetEnvironment }}_SqlAPIAccess_close_failed_servicenow_change
+    dependsOn:
+      - ${{ parameters.targetEnvironment }}_SqlAPIAccessDeploymentVerification
+    condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_SqlAPIAccessDeploymentVerification')), eq(variables['System.StageAttempt'], 1)))
+    displayName: Close-failed-Servicellow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: 'Failure'
+
+  - ${{ if in(parameters.targetEnvironment, 'development', 'test') }}:
+      - stage: ${{ parameters.targetEnvironment }}_SqlTableCreation
+        condition: succeeded()
+        variables:
+          - template: ./parameter/${{ parameters.targetEnvironment }}.variables.yml
+        jobs:
+          - job: SqlAccessToGrp
+            displayName: Give SQL access to Grp
+            pool:
+              name: Private Pool Windows VS2019
+            steps:
+              - template: ./template/non-bicep/sql-role-assignment.yml
+                parameters:
+                  serviceConnectionName: ${{ variables.ServiceConnectionName }}
+                  userName: ${{ variables.groupName }}
+                  sqlServerName: ${{ variables.SqlServerName }}
+                  sqlDatabaseName: ${{ variables.SqlDatabaseName }}
+                  resourceGroupName: ${{ variables.resourceGroupName }}
+                  subscriptionId: ${{ variables.subscriptionId }}
+                  targetRgSpnName: ${{ variables.targetRgSpnName }}
+
+  - stage: SqlDatabaseSetup
+    displayName: Create Tables in Database
+    jobs:
+      - job: Create_Tables_in_Database
+        displayName: Create Tables in Database
+        pool:
+          name: Private Pool Windows VS2022
+        steps:
+          - task: SqlAzureDacpacDeployment@1
+            name: Create_Tables
+            displayName: Create Tables in Database
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              AuthenticationType: servicePrincipal
+              ServerName: ${{ variables.SqlServerName }}.database.windows.net
+              DatabaseName: ${{ variables.SqlDatabaseName }}
+              deployType: sqlTask
+              sqlFile: ./scripts/InitializeDatabase.sql

@@ -1,0 +1,89 @@
+name: Sql Db PITR backup
+
+parameters:
+  - name: targetEnvironment
+    type: string
+    default: acceptance
+    values:
+      - test
+      - acceptance
+      - production
+      - development
+
+variables:
+  - template: ../../parameter/global.variables.yml
+
+resources:
+  repositories:
+    - repository: pipetemplates
+      type: git
+      name: 'GRD0001045/pita-pipeline-templates'
+      ref: 'refs/heads/master'
+
+trigger: none
+pr: none
+
+pool:
+  name: Private Pool Deployment
+
+stages:
+  - stage: ${{ parameters.targetEnvironment }}_SqlPitrDeployment
+    condition: succeeded()
+    variables:
+      - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+    jobs:
+      - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+          - template: /generic/servicenow/create-change.yml@pipetemplates
+            parameters:
+              app_config_id: $(SnowCI)
+              app_version_number: $(AppVersionNumber)
+              approval_environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+              description: 'SqlDbPitr in ${{ parameters.targetEnvironment }}'
+
+      - job: SqlPitrDeploymentBicep
+        displayName: Deploy SQL PITR Bicep
+        steps:
+          - checkout: self
+            path: ./s/self
+
+          - task: AzureResourceManagerTemplateDeployment@3
+            displayName: Deploy SQL PITR Bicep template
+            enabled: true
+            name: DeploySqlPitrBicep
+            inputs:
+              action: 'Create Or Update Resource Group'
+              azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
+              csmFile: '../../misc/sql/pitr.bicep'
+              overrideParameters: '-serverName "${{ variables.SqlServerName }}" -databaseName "${{ variables.SqlDatabaseName }}" -retentionDays 15 -diffBackupIntervalInHours 12'
+              deploymentMode: Incremental
+              deploymentOutputs: resourceGroupDeploymentOutputs
+              deploymentScope: Resource Group
+              resourceGroupName: ${{ variables.ResourceGroupName }}
+              location: ${{ variables.location }}
+              subscriptionId: ${{ variables.SubscriptionId }}
+              templateLocation: Linked artifact
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      - stage: ${{ parameters.targetEnvironment }}_DeploymentVerification
+        dependsOn: ${{ parameters.targetEnvironment }}_SqlPitrDeployment
+        condition: or(failed(), succeeded('${{ parameters.targetEnvironment }}_SqlPitrDeployment'))
+        displayName: ${{ parameters.targetEnvironment }}-Verification
+        jobs:
+          - deployment: DeploymentVerification_Approval
+            displayName: Verification_Approval
+            environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+          - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+            parameters:
+              close_status: 'Success'
+              depends_on_job: 'DeploymentVerification_Approval'
+
+  - stage: ${{ parameters.targetEnvironment }}_close_failed_servicenow_change
+    dependsOn:
+      - ${{ parameters.targetEnvironment }}_DeploymentVerification
+    condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_DeploymentVerification')), eq(variables['System.StageAttempt'], 1)), canceled())
+    displayName: Close-failed-ServiceNow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: 'Failure'
