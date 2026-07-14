@@ -54,7 +54,7 @@ stages:
               action: 'Create Or Update Resource Group'
               azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
               csmFile: '../../misc/sql/pitr.bicep'
-              overrideParameters: '-serverName "${{ variables.SqlServerName }}" -databaseName "${{ variables.SqlDatabaseName }}" -retentionDays 15 -diffBackupIntervalInHours 12'
+              csmParametersFile: ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
               deploymentMode: Incremental
               deploymentOutputs: resourceGroupDeploymentOutputs
               deploymentScope: Resource Group
