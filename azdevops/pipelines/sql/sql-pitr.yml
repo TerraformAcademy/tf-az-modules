@@ -9,6 +9,13 @@ parameters:
       - acceptance
       - production
       - development
+  - name: retentionDays
+    type: int
+    default: 15
+    values:
+      - 7
+      - 15
+      - 30
 
 variables:
   - template: ../../parameter/global.variables.yml
@@ -56,6 +63,7 @@ stages:
               azureResourceManagerConnection: ${{ variables.ServiceConnectionName }}
               csmFile: '../../misc/sql/pitr.bicep'
               csmParametersFile: ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+              overrideParameters: '-retentionDays ${{ parameters.retentionDays }}'
               deploymentMode: Incremental
               deploymentOutputs: resourceGroupDeploymentOutputs
               deploymentScope: Resource Group

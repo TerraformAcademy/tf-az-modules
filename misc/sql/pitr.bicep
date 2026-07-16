@@ -29,7 +29,7 @@ Controls how frequently differential backups are taken.
 Only applicable to live databases (not dropped databases).
 Allowed values: 12 or 24 hours.
 ''')
-@allowed([
+@allowed([           
   12
   24
 ])
