@@ -29,4 +29,4 @@ module pitrPolicy '../../misc/sql/pitr.bicep' = {
 output policyId string = pitrPolicy.outputs.id
 output policyName string = pitrPolicy.outputs.name
 output configuredRetentionDays int = pitrPolicy.outputs.retentionDays
-output configuredDiffBackupIntervalInHours int = pitrPolicy.outputs.diffBackupIntervalInHours
+output configuredDiffBackupIntervalInHours int? = pitrPolicy.outputs.diffBackupIntervalInHours!

@@ -48,6 +48,13 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2025-01-01' existing = {
   parent: sqlServer
 }
 
+var isHyperscaleDatabase = sqlDatabase.sku.tier == 'Hyperscale'
+var backupPolicyProperties = union({
+  retentionDays: retentionDays
+}, isHyperscaleDatabase ? {} : {
+  diffBackupIntervalInHours: diffBackupIntervalInHours
+})
+
 // ---------------------------------------------------------------------------
 // Backup Short-Term Retention Policy
 // ---------------------------------------------------------------------------
@@ -56,10 +63,7 @@ resource backupShortTermRetentionPolicy 'Microsoft.Sql/servers/databases/backupS
   // The name must always be 'default' – this is the only policy name supported by the API.
   name: 'default'
   parent: sqlDatabase
-  properties: {
-    retentionDays: retentionDays
-    diffBackupIntervalInHours: diffBackupIntervalInHours
-  }
+  properties: backupPolicyProperties
 }
 
 // ---------------------------------------------------------------------------
@@ -76,4 +80,4 @@ output name string = backupShortTermRetentionPolicy.name
 output retentionDays int = backupShortTermRetentionPolicy.properties.retentionDays
 
 @description('Configured differential backup interval in hours')
-output diffBackupIntervalInHours int = backupShortTermRetentionPolicy.properties.diffBackupIntervalInHours
+output diffBackupIntervalInHours int? = isHyperscaleDatabase ? null : backupShortTermRetentionPolicy.properties.diffBackupIntervalInHours
