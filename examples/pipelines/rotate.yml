@@ -1,0 +1,239 @@
+﻿trigger:
+  - none
+
+parameters:
+  - name: targetEnvironment
+    type: string
+    default: development
+    values:
+      - development
+      - test
+      - acceptance
+      - production
+
+  - name: azureKV
+    type: string
+    default: batr-dlz-vlt
+    values:
+      - batr-dlz-vlt
+      - batr-tlz-vlt
+      - batr-alz-vlt
+      - batr-plz-vlt
+
+  - name: rotateSecrets
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: rotateKey
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: updateKey
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: enforce_activation_date
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: enforce_expiry_date
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: keyName
+    type: string
+
+resources:
+  repositories:
+    - repository: pipetemplates
+      type: git
+      name: GRD0001045/pita-pipeline-templates
+      ref: refs/heads/master
+
+variables:
+  - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+
+stages:
+  - stage: ${{ parameters.targetEnvironment }}_RotateSecret
+    condition: succeeded()
+    jobs:
+      - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+          template: /generic/servicenow/create-change.yml@pipetemplates
+          parameters:
+            app_config_id: $(SnowCI)
+            app_version_number: $(AppVersionNumber)
+            approval_environment: BATR3-${{ parameters.targetEnvironment }}-approval
+
+      - ${{ if eq(parameters.rotateSecrets, 'yes') }}:
+          job: Monitor_KV_Secrets_Expiry
+          displayName: Rotate Secrets in Key vault
+          pool:
+            name: Private Pool Deployment
+          steps:
+            - task: AzureCLI@2
+              displayName: Rotate Secrets in Key vault
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  keyvaultEntries ($(az keyvault secret list --vault-name ${{ parameters.azureKV }} --query "[*].{name:name}" -o tsv))
+                  echo "List of secrets in key vault ${{ parameters.azureKV }} is: $keyvaultEntries"
+                  echo "Going to iterate over secrets and rotate:"
+                  for secretname in "${keyvaultEntries[@]}"
+                  do
+                  echo "Secret name is: $secretname"
+                  # [[ $secretname *$'\r'* ]] && echo yes || echo no
+                  # echo "$secretname" | od -c
+                  secretname=$(echo $secretname tr -d '\r')
+                  echo "az keyvault secret show --vault-name "${{ parameters.azureKV }}" --name $secretname --query '{"expires":attributes.expires)' -o tsv
+                  #echo "Expiry Date of secret $secretname is: $ expDateSecret"
+
+                  expNoOfDaysDesKey= echo $((($(date -d "$(expDateSecret:0:10)" +%s) $(date +%s)) / 86400))
+                  echo "No of Days for secret $secretname to expire is: $expNoOfDaysDesKey"
+                  threshholdDays-30
+                  If [ "$expNoOfDaysDesKey" -It "$threshholdDays" ]; then
+                  echo "secret $secretname going to expire in Days: $expNoOfDaysDesKey"
+                  echo "Going to extend the expiry date for Secret $secretname."
+                  newExpirationDate $(date +%Y-%m-%d' -d "+360 days")
+                  echo "new Expiry Date for Secret $secretname is: $newExpirationDate"
+
+                  az keyvault secret set -name $secretname-vault-name "$({ parameters.azureKV }}" --value $(az keyvault secret show-name $secretname-vaul ault-name "${{ parameters.azureKV }}"
+                  --query value -o tsv) --expires $newExpirationDate --query '{"attributes":attributes,"name":name, "id":id}'
+
+      - ${{ if eq(parameters.rotateKey, 'yes') }}:
+          job: Rotate_Key
+          displayName: Rotate Keys in Key vault
+          pool:
+            name: Private Pool Deployment
+          steps:
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  az keyvault key rotate -name '${{ parameters.keyName }}' --vault-name '${{ parameters.azureKV }}'
+
+      - ${{ if eq(parameters.updateKey, 'yes') }}:
+          job: Update_Key
+          displayName: Update Key attributes in Key vault
+          pool:
+            name: Private Pool Deployment
+          steps:
+            - task: AzureCLI@2
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  az keyvault key set-attributes --name '${{ parameters.keyName }}' --vault-name '${{ parameters.azureKV }}' --expires 2025-03-30T12:27:00
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_Verification
+      dependsOn: ${{ parameters.targetEnvironment }}_RotateSecret
+      condition: or(failed(), succeeded('${{ parameters.targetEnvironment }}_RotateSecret'))
+      displayName: ${{ parameters.targetEnvironment }}-Verification
+      jobs:
+        - deployment: DeploymentVerification_Approval
+          displayName: Verification_Approval
+          environment: BATR3-${{ parameters.targetEnvironment }}-approval
+          template: /generic/servicenow/close-change-stage.yml@pipetemplates
+          parameters:
+            close_status: Success
+            depends_on_job: DeploymentVerification_Approval
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_EnforceSecretDates
+      dependsOn: []
+      displayName: ${{ parameters.targetEnvironment }}-Secret-Date-Enforcement
+      jobs:
+        - job: Enforce_KV_Secret_Dates
+          displayName: Enforce Key Vault secret dates
+          pool:
+            name: Private Pool Deployment
+          steps:
+            - task: AzureCLI@2
+              displayName: Enforce provisioning of activation date
+              condition: eq('${{ parameters.enforce_activation_date }}', 'yes')
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  vaultName="${{ parameters.azureKV }}"
+                  now=$(date +%Y-%m-%d)
+                  secretNames=$(az keyvault secret list --vault-name "$vaultName" --query "[].name" -o tsv)
+
+                  for secretname in $secretNames; do
+                    echo "Checking secret: $secretname"
+                    notBefore=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.notBefore" -o tsv)
+
+                    if [ "$notBefore" = "null" ] || [ -z "$notBefore" ]; then
+                      echo "Setting activation date to today: $now"
+                      secretValue=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "value" -o tsv)
+                      expires=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.expires" -o tsv)
+                      az keyvault secret set --vault-name "$vaultName" --name "$secretname" --value "$secretValue" --not-before "$now" ${expires:+--expires "$expires"}
+                    else
+                      echo "Activation date exists: $notBefore"
+                    fi
+                  done
+
+            - task: AzureCLI@2
+              displayName: Enforce expiry date limit
+              condition: eq('${{ parameters.enforce_expiry_date }}', 'yes')
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  vaultName="${{ parameters.azureKV }}"
+                  maxExpiry=$(date -d "+365 days" +%Y-%m-%d)
+                  secretNames=$(az keyvault secret list --vault-name "$vaultName" --query "[].name" -o tsv)
+
+                  for secretname in $secretNames; do
+                    echo "Checking secret: $secretname"
+                    expires=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.expires" -o tsv)
+
+                    if [ "$expires" = "null" ] || [ -z "$expires" ]; then
+                      echo "No expiry date present; setting expiry to $maxExpiry"
+                      secretValue=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "value" -o tsv)
+                      notBefore=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.notBefore" -o tsv)
+                      az keyvault secret set --vault-name "$vaultName" --name "$secretname" --value "$secretValue" --expires "$maxExpiry" ${notBefore:+--not-before "$notBefore"}
+                    else
+                      expiryDate=$(date -d "${expires:0:10}" +%Y-%m-%d)
+                      if [ "$(date -d "$expiryDate" +%s)" -gt "$(date -d "$maxExpiry" +%s)" ]; then
+                        echo "Expiry exceeds 365 days; truncating to $maxExpiry"
+                        secretValue=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "value" -o tsv)
+                        notBefore=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.notBefore" -o tsv)
+                        az keyvault secret set --vault-name "$vaultName" --name "$secretname" --value "$secretValue" --expires "$maxExpiry" ${notBefore:+--not-before "$notBefore"}
+                      else
+                        echo "Expiry is within limit: $expiryDate"
+                      fi
+                    fi
+                  done
+
+  - stage: ${{ parameters.targetEnvironment }}_RotateSecret_close_failed_servicenow_change
+    dependsOn:
+      - ${{ parameters.targetEnvironment }}_RotateSecret_Verification
+    condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_RotateSecret_Verification')), eq(variables['System.StageAttempt'], 1)), canceled())
+    displayName: Close-failed-ServiceNow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: Failure

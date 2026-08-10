@@ -1,0 +1,1174 @@
+{
+  "definition": {
+    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+    "contentVersion": "1.0.0.0",
+    "triggers": {
+      "manual": {
+        "type": "Request",
+        "kind": "Http",
+        "inputs": {
+          "schema": {
+            "properties": {
+              "data": {
+                "properties": {
+                  "alertContext": {
+                    "properties": {
+                      "AffectedConfigurationItems": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "IncludedSearchResults": {
+                        "type": "string"
+                      },
+                      "LinkToSearchResults": {
+                        "type": "string"
+                      },
+                      "Operator": {
+                        "type": "string"
+                      },
+                      "ResultCount": {
+                        "type": "integer"
+                      },
+                      "SearchIntervalDurationMin": {
+                        "type": "string"
+                      },
+                      "SearchIntervalEndtimeUtc": {
+                        "type": "string"
+                      },
+                      "SearchIntervalInMinutes": {
+                        "type": "string"
+                      },
+                      "SearchIntervalStartTimeUtc": {
+                        "type": "string"
+                      },
+                      "SearchQuery": {
+                        "type": "string"
+                      },
+                      "SearchResults": {
+                        "type": "string"
+                      },
+                      "SeverityDescription": {
+                        "type": "string"
+                      },
+                      "Threshold": {
+                        "type": "integer"
+                      },
+                      "WorkspaceId": {
+                        "type": "string"
+                      },
+                      "condition": {
+                        "properties": {
+                          "allOf": {
+                            "items": {
+                              "properties": {
+                                "dimensions": {
+                                  "type": "array"
+                                },
+                                "failingPeriods": {
+                                  "properties": {
+                                    "minFailingPeriodsToAlert": {
+                                      "type": "integer"
+                                    },
+                                    "numberOfEvaluationPeriods": {
+                                      "type": "integer"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "linkToFilteredSearchResultsAPI": {
+                                  "type": "string"
+                                },
+                                "linkToFilteredSearchResultsUI": {
+                                  "type": "string"
+                                },
+                                "linkToSearchResultsAPI": {
+                                  "type": "string"
+                                },
+                                "linkToSearchResultsUI": {
+                                  "type": "string"
+                                },
+                                "metricMeasureColumn": {},
+                                "metricValue": {
+                                  "type": "integer"
+                                },
+                                "operator": {
+                                  "type": "string"
+                                },
+                                "searchQuery": {
+                                  "type": "string"
+                                },
+                                "targetResourceTypes": {},
+                                "threshold": {
+                                  "type": "string"
+                                },
+                                "timeAggregation": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "searchQuery",
+                                "metricMeasureColumn",
+                                "targetResourceTypes",
+                                "operator",
+                                "threshold",
+                                "timeAggregation",
+                                "dimensions",
+                                "metricValue",
+                                "failingPeriods",
+                                "linkToSearchResultsUI",
+                                "linkToFilteredSearchResultsUI",
+                                "linkToSearchResultsAPI",
+                                "linkToFilteredSearchResultsAPI"
+                              ],
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "windowEndTime": {
+                            "type": "string"
+                          },
+                          "windowSize": {
+                            "type": "string"
+                          },
+                          "windowStartTime": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "status": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "essentials": {
+                    "properties": {
+                      "alertContextVersion": {
+                        "type": "string"
+                      },
+                      "alertId": {
+                        "type": "string"
+                      },
+                      "alertRule": {
+                        "type": "string"
+                      },
+                      "alertTargetIDs": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "essentialsVersion": {
+                        "type": "string"
+                      },
+                      "firedDateTime": {
+                        "type": "string"
+                      },
+                      "monitorCondition": {
+                        "type": "string"
+                      },
+                      "monitoringService": {
+                        "type": "string"
+                      },
+                      "originAlertId": {
+                        "type": "string"
+                      },
+                      "severity": {
+                        "type": "string"
+                      },
+                      "signalType": {
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "schemaId": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            },
+            "type": "object"
+          }
+        }
+      }
+    },
+    "actions": {
+      "Initialize_varResourceGroup": {
+        "runAfter": {},
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varResourceGroup",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varSeverity": {
+        "runAfter": {
+          "Initialize_varResourceGroup": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varSeverity",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varHeartBeat": {
+        "runAfter": {
+          "Initialize_varSeverity": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varHeartBeat",
+              "type": "boolean",
+              "value": false
+            }
+          ]
+        }
+      },
+      "Initialize_varMessageKey": {
+        "runAfter": {
+          "Initialize_varHeartBeat": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varMessageKey",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varRawPayload": {
+        "runAfter": {
+          "Initialize_varMessageKey": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varRawPayload",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varDescription": {
+        "runAfter": {
+          "Initialize_varRawPayload": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varDescription",
+              "type": "string",
+              "value": "@triggerBody()?['data']?['essentials']?['description']"
+            }
+          ]
+        }
+      },
+      "Initialize_varAlertName": {
+        "runAfter": {
+          "Initialize_varDescription": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varAlertName",
+              "type": "string",
+              "value": "@triggerBody()?['data']?['essentials']?['alertRule']"
+            }
+          ]
+        }
+      },
+      "Initialize_varAlertId": {
+        "runAfter": {
+          "Initialize_varAlertName": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varAlertId",
+              "type": "string",
+              "value": "@triggerBody()?['data']?['essentials']?['alertId']"
+            }
+          ]
+        }
+      },
+      "Initialize_varIndexStartAlertId": {
+        "runAfter": {
+          "Initialize_varAlertId": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varIndexStartAlertId",
+              "type": "integer",
+              "value": 36
+            }
+          ]
+        }
+      },
+      "Initialize_varAlertIdForQuery": {
+        "runAfter": {
+          "Initialize_varIndexStartAlertId": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varAlertIdForQuery",
+              "type": "string",
+              "value": "@substring(variables('varAlertId'), int(variables('varIndexStartAlertId')))"
+            }
+          ]
+        }
+      },
+      "Initialize_varResourceGroupCheck": {
+        "runAfter": {
+          "Initialize_varAlertIdForQuery": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varResourceGroupCheck",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varCI": {
+        "runAfter": {
+          "Initialize_varResourceGroupCheck": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varCI",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Initialize_varFastorSlow": {
+        "runAfter": {
+          "Initialize_varCI": [
+            "Succeeded"
+          ]
+        },
+        "type": "InitializeVariable",
+        "inputs": {
+          "variables": [
+            {
+              "name": "varFastorSlow",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "Condition_heartbeat": {
+        "actions": {
+          "Set_varHeartBeat_to_true": {
+            "runAfter": {},
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varHeartBeat",
+              "value": true
+            }
+          }
+        },
+        "runAfter": {
+          "Initialize_varFastorSlow": [
+            "Succeeded"
+          ]
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['alertRule']",
+                "Platform_SngIntegrationCheck"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Match_severity_to_status": {
+        "runAfter": {
+          "Condition_heartbeat": [
+            "Succeeded"
+          ]
+        },
+        "type": "SetVariable",
+        "inputs": {
+          "name": "varSeverity",
+          "value": "@if(equals(triggerBody()?['data']?['essentials']?['severity'], 'Sev0'), 4, if(equals(triggerBody()?['data']?['essentials']?['severity'], 'Sev1'), 3, if(equals(triggerBody()?['data']?['essentials']?['severity'], 'Sev2'), 2, 1)))"
+        }
+      },
+      "Condition_alert_fired": {
+        "actions": {},
+        "runAfter": {
+          "Match_severity_to_status": [
+            "Succeeded"
+          ]
+        },
+        "else": {
+          "actions": {
+            "Set_varSeverity": {
+              "runAfter": {},
+              "type": "SetVariable",
+              "inputs": {
+                "name": "varSeverity",
+                "value": "0"
+              }
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['monitorCondition']",
+                "Fired"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Get_access_token_from_SNG": {
+        "runAfter": {
+          "Condition_alert_fired": [
+            "Succeeded"
+          ]
+        },
+        "type": "Http",
+        "inputs": {
+          "body": "grant_type=refresh_token&client_id=@{parameters('clientId')}&client_secret=@{parameters('clientSecret')}&refresh_token=@{parameters('refreshToken')}",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "method": "POST",
+          "url": "@parameters('secUrl')"
+        },
+        "runtimeConfiguration": {
+          "secureData": {
+            "properties": [
+              "inputs",
+              "outputs"
+            ]
+          }
+        }
+      },
+      "Parse_body_to_access_token": {
+        "runAfter": {
+          "Get_access_token_from_SNG": [
+            "Succeeded"
+          ]
+        },
+        "type": "ParseJson",
+        "inputs": {
+          "content": "@body('Get_access_token_from_SNG')",
+          "schema": {
+            "properties": {
+              "access_token": {
+                "type": "string"
+              },
+              "expires_in": {
+                "type": "integer"
+              },
+              "token_type": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        }
+      },
+      "Delay": {
+        "runAfter": {
+          "Parse_body_to_access_token": [
+            "Succeeded"
+          ]
+        },
+        "type": "Wait",
+        "inputs": {
+          "interval": {
+            "count": 17,
+            "unit": "Second"
+          }
+        }
+      },
+      "Query_resource_graph": {
+        "runAfter": {
+          "Delay": [
+            "Succeeded"
+          ]
+        },
+        "type": "Http",
+        "inputs": {
+          "authentication": {
+            "identity": "/subscriptions/a8f3a074-398d-4cfa-8019-a86d2bd26d92/resourceGroups/cbspitsm-p-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/batr-p-lz-logic-app",
+            "type": "ManagedServiceIdentity"
+          },
+          "body": {
+            "query": "alertsmanagementresources | where type =~ 'microsoft.alertsmanagement/alerts' | where name == '@{variables('varAlertName')}' | where id contains '@{variables('varAlertIdForQuery')}' | extend parsedProperties = parse_json(properties) | extend alertRule = tostring(parsedProperties.essentials.alertRule) | extend alertRule = tolower(alertRule) | extend startIndex = indexof(alertRule, '/resourcegroups/') + strlen('/resourcegroups/') | extend endIndex = indexof(alertRule, '/providers/') | extend extractedRGvalue = substring(alertRule, startIndex, endIndex - startIndex) | project resourceGroup = extractedRGvalue"
+          },
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "method": "POST",
+          "queries": {
+            "api-version": "2021-03-01"
+          },
+          "uri": "https://management.azure.com/providers/Microsoft.ResourceGraph/resources"
+        }
+      },
+      "Set_first_varResourceGroupCheck": {
+        "runAfter": {
+          "Query_resource_graph": [
+            "Succeeded"
+          ]
+        },
+        "type": "SetVariable",
+        "inputs": {
+          "name": "varResourceGroupCheck",
+          "value": "@body('Query_resource_graph')?['data']"
+        }
+      },
+      "Check_if_needed_to_retry_query": {
+        "actions": {
+          "Set_varResourceGroup": {
+            "runAfter": {},
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varResourceGroup",
+              "value": "@body('Query_resource_graph')?['data']?[0]?['resourceGroup']"
+            }
+          }
+        },
+        "runAfter": {
+          "Set_first_varResourceGroupCheck": [
+            "Succeeded"
+          ]
+        },
+        "else": {
+          "actions": {
+            "Retry_query_loop": {
+              "actions": {
+                "Retry_delay": {
+                  "runAfter": {},
+                  "type": "Wait",
+                  "inputs": {
+                    "interval": {
+                      "count": 2,
+                      "unit": "Second"
+                    }
+                  }
+                },
+                "Retry_query_resource_graph": {
+                  "runAfter": {
+                    "Retry_delay": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "Http",
+                  "inputs": {
+                    "authentication": {
+                      "identity": "/subscriptions/a8f3a074-398d-4cfa-8019-a86d2bd26d92/resourceGroups/cbspitsm-p-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/batr-p-lz-logic-app",
+                      "type": "ManagedServiceIdentity"
+                    },
+                    "body": {
+                      "query": "alertsmanagementresources | where type =~ 'microsoft.alertsmanagement/alerts' | where name == '@{variables('varAlertName')}' | where id contains '@{variables('varAlertIdForQuery')}' | extend parsedProperties = parse_json(properties) | extend alertRule = tostring(parsedProperties.essentials.alertRule) | extend alertRule = tolower(alertRule) | extend startIndex = indexof(alertRule, '/resourcegroups/') + strlen('/resourcegroups/') | extend endIndex = indexof(alertRule, '/providers/') | extend extractedRGvalue = substring(alertRule, startIndex, endIndex - startIndex) | project resourceGroup = extractedRGvalue"
+                    },
+                    "headers": {
+                      "Content-Type": "application/json"
+                    },
+                    "method": "POST",
+                    "queries": {
+                      "api-version": "2021-03-01"
+                    },
+                    "uri": "https://management.azure.com/providers/Microsoft.ResourceGraph/resources"
+                  }
+                },
+                "Set_varResourceGroupCheck": {
+                  "runAfter": {
+                    "Retry_query_resource_graph": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varResourceGroupCheck",
+                    "value": "@body('Retry_query_resource_graph')?['data']"
+                  }
+                }
+              },
+              "runAfter": {},
+              "expression": "@contains(variables('varResourceGroupCheck'), 'resourceGroup')",
+              "limit": {
+                "count": 60,
+                "timeout": "PT1M"
+              },
+              "type": "Until"
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "contains": [
+                "@variables('varResourceGroupCheck')",
+                "resourceGroup"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Check_if_description_is_not_empty": {
+        "actions": {
+          "Set_varSplitDescription": {
+            "runAfter": {},
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varSplitDescription",
+              "value": "@split(variables('varDescription'), ' ')"
+            }
+          },
+          "Set_varCI": {
+            "runAfter": {
+              "Set_varSplitDescription": [
+                "Succeeded"
+              ]
+            },
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varCI",
+              "value": "@variables('varSplitDescription')[0]"
+            }
+          },
+          "Set_varSplitCI": {
+            "runAfter": {
+              "Set_varCI": [
+                "Succeeded"
+              ]
+            },
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varSplitCI",
+              "value": "@split(variables('varCI'), '')"
+            }
+          },
+          "CI_validation": {
+            "actions": {
+              "Set_varfastorSlow_to_Fast_if_CI_validation_completed_successfully": {
+                "runAfter": {},
+                "type": "SetVariable",
+                "inputs": {
+                  "name": "varFastorSlow",
+                  "value": "Fast"
+                }
+              },
+              "Set_varResourceGroup_after_CI_validation": {
+                "runAfter": {
+                  "Set_varfastorSlow_to_Fast_if_CI_validation_completed_successfully": [
+                    "Succeeded"
+                  ]
+                },
+                "type": "SetVariable",
+                "inputs": {
+                  "name": "varResourceGroup",
+                  "value": "CI has been provided, ResourceGroupName hasn't been searched."
+                }
+              }
+            },
+            "runAfter": {
+              "Set_varSplitCI": [
+                "Succeeded"
+              ]
+            },
+            "else": {
+              "actions": {
+                "Set_varFastorSlow_to_Slow_if_CI_validation_failed": {
+                  "runAfter": {},
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varFastorSlow",
+                    "value": "Slow"
+                  }
+                },
+                "Set_varCI_after_failed_CI_validation": {
+                  "runAfter": {
+                    "Set_varFastorSlow_to_Slow_if_CI_validation_failed": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varCI",
+                    "value": "No CI provided or its pattern is invalid."
+                  }
+                }
+              }
+            },
+            "expression": {
+              "and": [
+                {
+                  "startsWith": [
+                    "@variables('varCI')",
+                    "CI"
+                  ]
+                },
+                {
+                  "equals": [
+                    "@length(variables('varCI'))",
+                    9
+                  ]
+                },
+                {
+                  "equals": [
+                    "@isInt(variables('varSplitCI')[2])",
+                    true
+                  ]
+                },
+                {
+                  "equals": [
+                    "@isInt(variables('varSplitCI')[3])",
+                    true
+                  ]
+                },
+                {
+                  "equals": [
+                    "@isInt(variables('varSplitCI')[4])",
+                    true
+                  ]
+                },
+                {
+                  "equals": [
+                    "@isInt(variables('varSplitCI')[5])",
+                    true
+                  ]
+                }
+              ]
+            },
+            "type": "If"
+          }
+        },
+        "runAfter": {
+          "Check_if_needed_to_retry_query": [
+            "Succeeded"
+          ]
+        },
+        "else": {
+          "actions": {
+            "Set_varFastorSlow_to_slow_when_description_is_empty": {
+              "runAfter": {},
+              "type": "SetVariable",
+              "inputs": {
+                "name": "varFastorSlow",
+                "value": "Slow"
+              }
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@empty(variables('varDescription'))",
+                false
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Set_varRawPayload": {
+        "actions": {
+          "Set_varRawPayload_with_full_data": {
+            "runAfter": {},
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varRawPayload",
+              "value": "@triggerBody()?['data']"
+            }
+          }
+        },
+        "runAfter": {
+          "Check_if_description_is_not_empty": [
+            "Succeeded"
+          ]
+        },
+        "else": {
+          "actions": {
+            "Set_varRawPayload_truncated": {
+              "runAfter": {},
+              "type": "SetVariable",
+              "inputs": {
+                "name": "varRawPayload",
+                "value": {
+                  "message": "Payload exceeds 15000 chars so data is truncated."
+                }
+              }
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "less": [
+                "@add(length(string(triggerBody()?['data']?['essentials'])), length(string(triggerBody()?['data'])))",
+                15000
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Set_varMessageKey": {
+        "actions": {
+          "Set_MessageKey_with_ConfigItems": {
+            "runAfter": {},
+            "type": "SetVariable",
+            "inputs": {
+              "name": "varMessageKey",
+              "value": "@{triggerBody()?['data']?['essentials']?['alertRule']}@{triggerBody()?['data']?['essentials']?['alertId']}@{triggerBody()?['data']?['essentials']?['configurationItems']?[0]}"
+            }
+          }
+        },
+        "runAfter": {
+          "Set_varRawPayload": [
+            "Succeeded"
+          ]
+        },
+        "else": {
+          "actions": {
+            "Check_alertTargetIDs": {
+              "actions": {
+                "Set_MessageKey_with_alertTargetIDs": {
+                  "runAfter": {},
+                  "type": "SetVariable",
+                  "inputs": {
+                    "name": "varMessageKey",
+                    "value": "@{triggerBody()?['data']?['essentials']?['alertRule']}@{triggerBody()?['data']?['essentials']?['alertId']}@{triggerBody()?['data']?['essentials']?['alertTargetIDs']?[0]}"
+                  }
+                }
+              },
+              "runAfter": {},
+              "else": {
+                "actions": {
+                  "Set_Empty_MessageKey": {
+                    "runAfter": {},
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "varMessageKey",
+                      "value": ""
+                    }
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "not": {
+                      "equals": [
+                        "@triggerBody()?['data']?['essentials']?['alertTargetIDs']",
+                        null
+                      ]
+                    }
+                  },
+                  {
+                    "greater": [
+                      "@length(triggerBody()?['data']?['essentials']?['alertTargetIDs'])",
+                      0
+                    ]
+                  }
+                ]
+              },
+              "type": "If"
+            }
+          }
+        },
+        "expression": {
+          "and": [
+            {
+              "not": {
+                "equals": [
+                  "@triggerBody()?['data']?['essentials']?['configurationItems']",
+                  null
+                ]
+              }
+            },
+            {
+              "greater": [
+                "@length(triggerBody()?['data']?['essentials']?['configurationItems'])",
+                0
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Condition_Applicationinsights": {
+        "actions": {
+          "HTTP_AppInsights": {
+            "runAfter": {},
+            "type": "Http",
+            "inputs": {
+              "body": {
+                "context": {
+                  "BusinessApplicationCI": "@variables('varCI')",
+                  "ResourceGroupName": "@variables('varResourceGroup')",
+                  "Essentials": "@triggerBody()?['data']?['essentials']",
+                  "MessageKey": "@variables('varMessageKey')",
+                  "RawPayload": "@variables('varRawPayload')",
+                  "condition": {
+                    "AlertRuleName": "@triggerBody()?['data']?['essentials']?['alertRule']",
+                    "LinktoQueryResults": "@triggerBody()?['data']?['essentials']?['signalType']",
+                    "alertId": "@triggerBody()?['data']?['essentials']?['alertId']"
+                  },
+                  "resourceType": "resourceType",
+                  "timestamp": "@triggerBody()?['data']?['essentials']?['firedDateTime']"
+                },
+                "resourceRegion": "resourceRegion",
+                "status": "@variables('varSeverity')"
+              },
+              "headers": {
+                "Accept": "application/json",
+                "Authorization": "Bearer @body('Parse_body_to_access_token')?['access_token']",
+                "user-agent": "azure-insights"
+              },
+              "method": "POST",
+              "uri": "@parameters('endpointUrl')"
+            }
+          }
+        },
+        "runAfter": {
+          "Set_varMessageKey": [
+            "Succeeded"
+          ]
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['monitoringService']",
+                "Application Insights"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Condition_Loganalytics": {
+        "actions": {
+          "HTTP_LogAnalytics": {
+            "runAfter": {},
+            "type": "Http",
+            "inputs": {
+              "body": {
+                "context": {
+                  "BusinessApplicationCI": "@variables('varCI')",
+                  "HeartBeat": "@variables('varHeartBeat')",
+                  "ResourceGroupName": "@variables('varResourceGroup')",
+                  "Essentials": "@triggerBody()?['data']?['essentials']",
+                  "MessageKey": "@variables('varMessageKey')",
+                  "RawPayload": "@variables('varRawPayload')",
+                  "condition": {
+                    "AlertRuleName": "@triggerBody()?['data']?['essentials']?['alertRule']",
+                    "LinktoQueryResults": "@triggerBody()?['data']?['alertContext']?['LinkToSearchResults']",
+                    "alert_id": "@triggerBody()?['data']?['essentials']?['alertId']"
+                  },
+                  "resourceType": "resourceType",
+                  "timestamp": "@triggerBody()?['data']?['essentials']?['firedDateTime']"
+                },
+                "resourceRegion": "resourceRegion",
+                "status": "@variables('varSeverity')"
+              },
+              "headers": {
+                "Accept": "application/json",
+                "Authorization": "Bearer @body('Parse_body_to_access_token')?['access_token']",
+                "user-agent": "azure-insights"
+              },
+              "method": "POST",
+              "uri": "@parameters('endpointUrl')"
+            }
+          }
+        },
+        "runAfter": {
+          "Condition_Applicationinsights": [
+            "Succeeded"
+          ]
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['monitoringService']",
+                "Log Analytics"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Condition_Metric": {
+        "actions": {
+          "HTTP_Metric": {
+            "runAfter": {},
+            "type": "Http",
+            "inputs": {
+              "body": {
+                "context": {
+                  "BusinessApplicationCI": "@variables('varCI')",
+                  "ResourceGroupName": "@variables('varResourceGroup')",
+                  "Essentials": "@triggerBody()?['data']?['essentials']",
+                  "MessageKey": "@variables('varMessageKey')",
+                  "RawPayload": "@variables('varRawPayload')",
+                  "condition": {
+                    "AlertRuleName": "@triggerBody()?['data']?['essentials']?['alertRule']",
+                    "LinktoQueryResults": "@triggerBody()?['data']?['essentials']?['signalType']",
+                    "alertId": "@triggerBody()?['data']?['essentials']?['alertId']"
+                  },
+                  "resourceType": "resourceType",
+                  "timestamp": "@triggerBody()?['data']?['essentials']?['firedDateTime']"
+                },
+                "resourceRegion": "resourceRegion",
+                "status": "@variables('varSeverity')"
+              },
+              "headers": {
+                "Accept": "application/json",
+                "Authorization": "Bearer @body('Parse_body_to_access_token')?['access_token']",
+                "user-agent": "azure-insights"
+              },
+              "method": "POST",
+              "uri": "@parameters('endpointUrl')"
+            }
+          }
+        },
+        "runAfter": {
+          "Condition_Loganalytics": [
+            "Succeeded"
+          ]
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['monitoringService']",
+                "Platform"
+              ]
+            }
+          ]
+        },
+        "type": "If"
+      },
+      "Condition_ServiceHealth": {
+        "actions": {
+          "HTTP_ServiceHealth": {
+            "runAfter": {},
+            "type": "Http",
+            "inputs": {
+              "body": {
+                "context": {
+                  "BusinessApplicationCI": "@variables('varCI')",
+                  "ResourceGroupName": "@variables('varResourceGroup')",
+                  "Essentials": "@triggerBody()?['data']?['essentials']",
+                  "MessageKey": "@variables('varMessageKey')",
+                  "RawPayload": "@variables('varRawPayload')",
+                  "condition": {
+                    "AlertRuleName": "@triggerBody()?['data']?['essentials']?['alertRule']",
+                    "LinktoQueryResults": "@triggerBody()?['data']?['essentials']?['signalType']",
+                    "alert_id": "@triggerBody()?['data']?['essentials']?['alertId']"
+                  },
+                  "resourceType": "resourceType",
+                  "timestamp": "@triggerBody()?['data']?['essentials']?['firedDateTime']"
+                },
+                "resourceRegion": "resourceRegion",
+                "status": "@variables('varSeverity')"
+              },
+              "headers": {
+                "Accept": "application/json",
+                "Authorization": "Bearer @body('Parse_body_to_access_token')?['access_token']",
+                "user-agent": "azure-insights"
+              },
+              "method": "POST",
+              "uri": "@parameters('endpointUrl')"
+            }
+          }
+        },
+        "runAfter": {
+          "Condition_Metric": [
+            "Succeeded"
+          ]
+        },
+        "expression": {
+          "and": [
+            {
+              "equals": [
+                "@triggerBody()?['data']?['essentials']?['monitoringService']",
+                "ServiceHealth"
+              ]
+            },
+            {
+              "not": {
+                "equals": [
+                  "@triggerBody()?['data']?['alertContext']?['status']",
+                  "Resolved"
+                ]
+              }
+            }
+          ]
+        },
+        "type": "If"
+      }
+    }
+  }
+}
