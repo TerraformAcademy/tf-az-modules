@@ -1,0 +1,63 @@
+parameters:
+  - name: targetEnvironment
+    type: string
+    default: 'test'
+    values:
+      - development
+      - test
+      - acceptance
+      - production
+
+  - name: appInsightsNameString
+    type: string
+    default: ''
+
+trigger:
+  - none
+
+pool:
+  name: Private Pool
+
+variables:
+  - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+
+stages:
+  - stage: BATR_Appinsights_Infra_Deletion
+    displayName: BATR App Insights Infra Deletion
+    jobs:
+      - job: BATRAppinsightsInfraDeletion
+        displayName: BATRAppinsightsInfraDeletion
+        steps:
+          - task: AzureCLI@2
+            displayName: Delete Application Insights Resources
+            inputs:
+              azureSubscription: $(ResourceGroupName)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Preparing Azure CLI environment for extension installation..."
+                export AZURE_CONFIG_DIR="$(Agent.TempDirectory)/.azure"
+                export AZURE_EXTENSION_DIR="$(Agent.TempDirectory)/azurecliextensions"
+                az config set extension.use_dynamic_install=yes_without_prompt
+                az config set extension.dynamic_install_allow_preview=true
+                az extension add --name application-insights --yes --allow-preview || true
+
+                echo "Deleting Application Insights resources..."
+
+                # Parse the comma-separated list into an array
+                IFS=',' read -ra appInsightsArray <<< "${{ parameters.appInsightsNameString }}"
+
+                # Loop through the array and delete each Application Insights resource
+                for appInsightsName in "${appInsightsArray[@]}"
+                do
+                  echo "Deleting Application Insights: $appInsightsName from Resource Group: $(ResourceGroupName)"
+
+                  az monitor app-insights component delete \
+                    --app "$appInsightsName" \
+                    --resource-group "$(ResourceGroupName)" \
+                    --yes
+
+                  echo "Application Insights $appInsightsName deleted."
+                done
+
+                echo "All specified Application Insights resources have been deleted."

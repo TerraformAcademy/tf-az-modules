@@ -228,6 +228,77 @@ stages:
                     fi
                   done
 
+            - task: AzureCLI@2
+              displayName: Truncate long secret expiries (CLI)
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  #!/usr/bin/env bash
+                  set -euo pipefail
+
+                  vaultName="${{ parameters.azureKV }}"
+
+                  # Maximum allowed expiry = today + 365 days (UTC)
+                  maxExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
+                  maxExpiryEpoch=$(date -u -d "$maxExpiry" +%s)
+
+                  echo "Maximum allowed expiry: $maxExpiry"
+
+                  az keyvault secret list \
+                      --vault-name "$vaultName" \
+                      --query "[].{name:name,expires:attributes.expires}" \
+                      -o tsv |
+                  while IFS=$'\t' read -r secretName expires
+                  do
+                      # Skip secrets with no expiry date
+                      if [[ -z "$expires" || "$expires" == "null" ]]; then
+                          continue
+                      fi
+
+                      expiryEpoch=$(date -u -d "$expires" +%s)
+
+                      # Only process secrets whose expiry is beyond the allowed limit
+                      if (( expiryEpoch > maxExpiryEpoch )); then
+
+                          echo "Updating '$secretName'"
+
+                          # Read current secret value
+                          secretValue=$(az keyvault secret show \
+                              --vault-name "$vaultName" \
+                              --name "$secretName" \
+                              --query value \
+                              -o tsv)
+
+                          # Preserve existing activation date if present
+                          notBefore=$(az keyvault secret show \
+                              --vault-name "$vaultName" \
+                              --name "$secretName" \
+                              --query attributes.notBefore \
+                              -o tsv)
+
+                          if [[ -n "$notBefore" && "$notBefore" != "null" ]]; then
+                              az keyvault secret set \
+                                  --vault-name "$vaultName" \
+                                  --name "$secretName" \
+                                  --value "$secretValue" \
+                                  --expires "$maxExpiry" \
+                                  --not-before "$notBefore"
+                          else
+                              az keyvault secret set \
+                                  --vault-name "$vaultName" \
+                                  --name "$secretName" \
+                                  --value "$secretValue" \
+                                  --expires "$maxExpiry"
+                          fi
+
+                          echo "✓ Expiry updated to $maxExpiry"
+                      fi
+                  done
+
+                  echo "Completed."
+
   - stage: ${{ parameters.targetEnvironment }}_RotateSecret_close_failed_servicenow_change
     dependsOn:
       - ${{ parameters.targetEnvironment }}_RotateSecret_Verification
