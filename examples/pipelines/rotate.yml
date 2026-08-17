@@ -158,16 +158,15 @@ stages:
             close_status: Success
             depends_on_job: DeploymentVerification_Approval
 
-  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
-      stage: ${{ parameters.targetEnvironment }}_RotateSecret_EnforceSecretDates
-      dependsOn: []
-      displayName: ${{ parameters.targetEnvironment }}-Secret-Date-Enforcement
-      jobs:
-        - job: Enforce_KV_Secret_Dates
-          displayName: Enforce Key Vault secret dates
-          pool:
-            name: Private Pool Deployment
-          steps:
+  - stage: ${{ parameters.targetEnvironment }}_RotateSecret_EnforceSecretDates
+    dependsOn: []
+    displayName: ${{ parameters.targetEnvironment }}-Secret-Date-Enforcement
+    jobs:
+      - job: Enforce_KV_Secret_Dates
+        displayName: Enforce Key Vault secret dates
+        pool:
+          name: Private Pool Deployment
+        steps:
             - task: AzureCLI@2
               displayName: Enforce provisioning of activation date
               condition: eq('${{ parameters.enforce_activation_date }}', 'yes')
@@ -176,6 +175,12 @@ stages:
                 scriptType: bash
                 scriptLocation: inlineScript
                 inlineScript: |
+                  export AZURE_CONFIG_DIR="$(Agent.TempDirectory)/.azure"
+                  export AZURE_EXTENSION_DIR="$(Agent.TempDirectory)/azurecliextensions"
+                  az config set extension.use_dynamic_install=yes_without_prompt
+                  az config set extension.dynamic_install_allow_preview=true
+                  az extension add --name keyvault --yes --allow-preview || true
+
                   vaultName="${{ parameters.azureKV }}"
                   now=$(date +%Y-%m-%d)
                   secretNames=$(az keyvault secret list --vault-name "$vaultName" --query "[].name" -o tsv)
@@ -195,40 +200,6 @@ stages:
                   done
 
             - task: AzureCLI@2
-              displayName: Enforce expiry date limit
-              condition: eq('${{ parameters.enforce_expiry_date }}', 'yes')
-              inputs:
-                azureSubscription: ${{ variables.serviceConnectionName }}
-                scriptType: bash
-                scriptLocation: inlineScript
-                inlineScript: |
-                  vaultName="${{ parameters.azureKV }}"
-                  maxExpiry=$(date -d "+365 days" +%Y-%m-%d)
-                  secretNames=$(az keyvault secret list --vault-name "$vaultName" --query "[].name" -o tsv)
-
-                  for secretname in $secretNames; do
-                    echo "Checking secret: $secretname"
-                    expires=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.expires" -o tsv)
-
-                    if [ "$expires" = "null" ] || [ -z "$expires" ]; then
-                      echo "No expiry date present; setting expiry to $maxExpiry"
-                      secretValue=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "value" -o tsv)
-                      notBefore=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.notBefore" -o tsv)
-                      az keyvault secret set --vault-name "$vaultName" --name "$secretname" --value "$secretValue" --expires "$maxExpiry" ${notBefore:+--not-before "$notBefore"}
-                    else
-                      expiryDate=$(date -d "${expires:0:10}" +%Y-%m-%d)
-                      if [ "$(date -d "$expiryDate" +%s)" -gt "$(date -d "$maxExpiry" +%s)" ]; then
-                        echo "Expiry exceeds 365 days; truncating to $maxExpiry"
-                        secretValue=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "value" -o tsv)
-                        notBefore=$(az keyvault secret show --vault-name "$vaultName" --name "$secretname" --query "attributes.notBefore" -o tsv)
-                        az keyvault secret set --vault-name "$vaultName" --name "$secretname" --value "$secretValue" --expires "$maxExpiry" ${notBefore:+--not-before "$notBefore"}
-                      else
-                        echo "Expiry is within limit: $expiryDate"
-                      fi
-                    fi
-                  done
-
-            - task: AzureCLI@2
               displayName: Truncate long secret expiries (CLI)
               condition: eq('${{ parameters.enforce_expiry_date }}', 'yes')
               inputs:
@@ -236,6 +207,12 @@ stages:
                 scriptType: bash
                 scriptLocation: inlineScript
                 inlineScript: |
+                  export AZURE_CONFIG_DIR="$(Agent.TempDirectory)/.azure"
+                  export AZURE_EXTENSION_DIR="$(Agent.TempDirectory)/azurecliextensions"
+                  az config set extension.use_dynamic_install=yes_without_prompt
+                  az config set extension.dynamic_install_allow_preview=true
+                  az extension add --name keyvault --yes --allow-preview || true
+
                   #!/usr/bin/env bash
                   set -euo pipefail
 
@@ -249,7 +226,7 @@ stages:
 
                   az keyvault secret list \
                       --vault-name "$vaultName" \
-                      --query "[].{name:name,expires:attributes.expires}" \
+                      --query "[].[name, attributes.expires]" \
                       -o tsv |
                   while IFS=$'\t' read -r secretName expires
                   do
@@ -265,14 +242,12 @@ stages:
 
                           echo "Updating '$secretName'"
 
-                          # Read current secret value
                           secretValue=$(az keyvault secret show \
                               --vault-name "$vaultName" \
                               --name "$secretName" \
                               --query value \
                               -o tsv)
 
-                          # Preserve existing activation date if present
                           notBefore=$(az keyvault secret show \
                               --vault-name "$vaultName" \
                               --name "$secretName" \
