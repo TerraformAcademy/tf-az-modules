@@ -230,6 +230,7 @@ stages:
 
             - task: AzureCLI@2
               displayName: Truncate long secret expiries (CLI)
+              condition: eq('${{ parameters.enforce_expiry_date }}', 'yes')
               inputs:
                 azureSubscription: ${{ variables.serviceConnectionName }}
                 scriptType: bash
@@ -299,12 +300,13 @@ stages:
 
                   echo "Completed."
 
-  - stage: ${{ parameters.targetEnvironment }}_RotateSecret_close_failed_servicenow_change
-    dependsOn:
-      - ${{ parameters.targetEnvironment }}_RotateSecret_Verification
-    condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_RotateSecret_Verification')), eq(variables['System.StageAttempt'], 1)), canceled())
-    displayName: Close-failed-ServiceNow-change
-    jobs:
-      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
-        parameters:
-          close_status: Failure
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_close_failed_servicenow_change
+      dependsOn:
+        - ${{ parameters.targetEnvironment }}_RotateSecret_Verification
+      condition: or(and(not(succeeded('${{ parameters.targetEnvironment }}_RotateSecret_Verification')), eq(variables['System.StageAttempt'], 1)), canceled())
+      displayName: Close-failed-ServiceNow-change
+      jobs:
+        - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+          parameters:
+            close_status: Failure
