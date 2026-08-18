@@ -97,7 +97,7 @@ jobs:
             secretNames=$(az keyvault secret list \
               --vault-name "$vaultName" \
               --query "[].name" \
-              -o tsv)
+              -o tsv | tr -d '\r')
 
             for secretName in $secretNames; do
 
@@ -109,22 +109,21 @@ jobs:
                 --query "attributes.expires" \
                 -o tsv)
 
-              # Skip secrets without an expiry date
               if [ -z "$expires" ] || [ "$expires" = "null" ]; then
-                echo "  No expiry date. Skipping."
+                echo "Secret '$secretName' has no expiry. Skipping."
                 continue
               fi
 
               expiryEpoch=$(date -u -d "$expires" +%s)
 
-              # Skip secrets within the 365-day limit
               if [ "$expiryEpoch" -le "$maxExpiryEpoch" ]; then
-                echo "  Expiry within 365 days. Skipping."
+                echo "Secret '$secretName' expiry is within 365 days. Skipping."
                 continue
               fi
 
-              echo "  Current expiry: $expires"
-              echo "  New expiry:     $maxExpiry"
+              echo "Secret '$secretName' exceeds 365 days."
+              echo "Current expiry: $expires"
+              echo "New expiry:     $maxExpiry"
 
               secretValue=$(az keyvault secret show \
                 --vault-name "$vaultName" \
@@ -138,5 +137,6 @@ jobs:
                 --value "$secretValue" \
                 --expires "$maxExpiry"
 
-              echo "  Secret updated successfully."
+              echo "Secret '$secretName' updated successfully."
+
             done
