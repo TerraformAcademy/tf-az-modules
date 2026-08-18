@@ -68,128 +68,152 @@ resources:
 variables:
   - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
 
-stage: ${{ parameters.targetEnvironment }}_RotateSecret_TruncateExpiry
-dependsOn: []
-displayName: ${{ parameters.targetEnvironment }}-Secret-Expiry-Enforcement
+stages:
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_CreateChange
+      displayName: ${{ parameters.targetEnvironment }}-Create-ServiceNow-Change
+      jobs:
+        - template: /generic/servicenow/create-change.yml@pipetemplates
+          parameters:
+            app_config_id: $(SnowCI)
+            app_version_number: $(AppVersionNumber)
+            approval_environment: BATR3-${{ parameters.targetEnvironment }}-approval
 
-jobs:
-  - job: Truncate_KV_Secret_Expiry
-    displayName: Truncate Key Vault secret expiry dates
-    pool:
-      name: Private Pool Deployment
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_TruncateExpiry
+      dependsOn:
+        - ${{ parameters.targetEnvironment }}_RotateSecret_CreateChange
+      displayName: ${{ parameters.targetEnvironment }}-Secret-Expiry-Enforcement
+      jobs:
+        - job: Truncate_KV_Secret_Expiry
+          displayName: Truncate Key Vault secret expiry dates
+          pool:
+            name: Private Pool Deployment
 
-    steps:
-      - task: AzureCLI@2
-        displayName: Truncate secret expiry dates
-        inputs:
-          azureSubscription: ${{ variables.serviceConnectionName }}
-          scriptType: bash
-          scriptLocation: inlineScript
-          inlineScript: |
-            vaultName="${{ parameters.azureKV }}"
+          steps:
+            - task: AzureCLI@2
+              displayName: Truncate secret expiry dates
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  vaultName="${{ parameters.azureKV }}"
 
-            maxExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
-            maxExpiryEpoch=$(date -u -d "$maxExpiry" +%s)
+                  maxExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
+                  maxExpiryEpoch=$(date -u -d "$maxExpiry" +%s)
 
-            echo "Key Vault: $vaultName"
-            echo "Maximum allowed expiry: $maxExpiry"
+                  echo "Key Vault: $vaultName"
+                  echo "Maximum allowed expiry: $maxExpiry"
 
-            secretNames=$(az keyvault secret list \
-              --vault-name "$vaultName" \
-              --query "[].name" \
-              -o tsv | tr -d '\r')
+                  secretNames=$(az keyvault secret list \
+                    --vault-name "$vaultName" \
+                    --query "[].name" \
+                    -o tsv | tr -d '\r')
 
-            for secretName in $secretNames; do
+                  for secretName in $secretNames; do
 
-              echo "Checking secret: $secretName"
+                    echo "Checking secret: $secretName"
 
-              expires=$(az keyvault secret show \
-                --vault-name "$vaultName" \
-                --name "$secretName" \
-                --query "attributes.expires" \
-                -o tsv)
+                    expires=$(az keyvault secret show \
+                      --vault-name "$vaultName" \
+                      --name "$secretName" \
+                      --query "attributes.expires" \
+                      -o tsv)
 
-              if [ -z "$expires" ] || [ "$expires" = "null" ]; then
-                echo "Secret '$secretName' has no expiry. Skipping."
-                continue
-              fi
+                    if [ -z "$expires" ] || [ "$expires" = "null" ]; then
+                      echo "Secret '$secretName' has no expiry. Skipping."
+                      continue
+                    fi
 
-              expiryEpoch=$(date -u -d "$expires" +%s)
+                    expiryEpoch=$(date -u -d "$expires" +%s)
 
-              if [ "$expiryEpoch" -le "$maxExpiryEpoch" ]; then
-                echo "Secret '$secretName' expiry is within 365 days. Skipping."
-                continue
-              fi
+                    if [ "$expiryEpoch" -le "$maxExpiryEpoch" ]; then
+                      echo "Secret '$secretName' expiry is within 365 days. Skipping."
+                      continue
+                    fi
 
-              echo "Secret '$secretName' exceeds 365 days."
-              echo "Current expiry: $expires"
-              echo "New expiry:     $maxExpiry"
+                    echo "Secret '$secretName' exceeds 365 days."
+                    echo "Current expiry: $expires"
+                    echo "New expiry:     $maxExpiry"
 
-              secretValue=$(az keyvault secret show \
-                --vault-name "$vaultName" \
-                --name "$secretName" \
-                --query "value" \
-                -o tsv)
+                    secretValue=$(az keyvault secret show \
+                      --vault-name "$vaultName" \
+                      --name "$secretName" \
+                      --query "value" \
+                      -o tsv)
 
-              az keyvault secret set \
-                --vault-name "$vaultName" \
-                --name "$secretName" \
-                --value "$secretValue" \
-                --expires "$maxExpiry"
+                    az keyvault secret set \
+                      --vault-name "$vaultName" \
+                      --name "$secretName" \
+                      --value "$secretValue" \
+                      --expires "$maxExpiry"
 
-              echo "Secret '$secretName' updated successfully."
+                    echo "Secret '$secretName' updated successfully."
 
-            done
-### Disabling old secret versions
-      - task: AzureCLI@2
-        displayName: Disable old Key Vault secret versions
-        inputs:
-          azureSubscription: ${{ variables.serviceConnectionName }}
-          scriptType: bash
-          scriptLocation: inlineScript
-          inlineScript: |
-            set -euo pipefail
-      
-            vaultName="${{ parameters.azureKV }}"
-      
-            secretNames=$(az keyvault secret list \
-              --vault-name "$vaultName" \
-              --query "[].name" \
-              -o tsv | tr -d '\r')
-      
-            for secretName in $secretNames; do
-      
-              echo "Checking versions for secret: $secretName"
-      
-              # Get the currently active/latest version
-              currentVersionId=$(az keyvault secret show \
-                --vault-name "$vaultName" \
-                --name "$secretName" \
-                --query "id" \
-                -o tsv)
-      
-              # Get all versions
-              versionIds=$(az keyvault secret list-versions \
-                --vault-name "$vaultName" \
-                --name "$secretName" \
-                --query "[].id" \
-                -o tsv | tr -d '\r')
-      
-              for versionId in $versionIds; do
-      
-                if [ "$versionId" != "$currentVersionId" ]; then
-      
-                  echo "Disabling old version: $versionId"
-      
-                  az keyvault secret set-attributes \
-                    --id "$versionId" \
-                    --enabled false \
-                    --output none
-      
-                fi
-      
-              done
-      
-            done
-      
-            echo "Old secret versions disabled successfully."
+                  done
+
+            - task: AzureCLI@2
+              displayName: Disable old Key Vault secret versions
+              inputs:
+                azureSubscription: ${{ variables.serviceConnectionName }}
+                scriptType: bash
+                scriptLocation: inlineScript
+                inlineScript: |
+                  set -euo pipefail
+
+                  vaultName="${{ parameters.azureKV }}"
+
+                  secretNames=$(az keyvault secret list \
+                    --vault-name "$vaultName" \
+                    --query "[].name" \
+                    -o tsv | tr -d '\r')
+
+                  for secretName in $secretNames; do
+
+                    echo "Checking versions for secret: $secretName"
+
+                    currentVersionId=$(az keyvault secret show \
+                      --vault-name "$vaultName" \
+                      --name "$secretName" \
+                      --query "id" \
+                      -o tsv)
+
+                    versionIds=$(az keyvault secret list-versions \
+                      --vault-name "$vaultName" \
+                      --name "$secretName" \
+                      --query "[].id" \
+                      -o tsv | tr -d '\r')
+
+                    for versionId in $versionIds; do
+
+                      if [ "$versionId" != "$currentVersionId" ]; then
+
+                        echo "Disabling old version: $versionId"
+
+                        az keyvault secret set-attributes \
+                          --id "$versionId" \
+                          --enabled false \
+                          --output none
+
+                      fi
+
+                    done
+
+                  done
+
+                  echo "Old secret versions disabled successfully."
+
+  - ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+      stage: ${{ parameters.targetEnvironment }}_RotateSecret_Verification
+      dependsOn: ${{ parameters.targetEnvironment }}_RotateSecret_TruncateExpiry
+      condition: or(failed(), succeeded('${{ parameters.targetEnvironment }}_RotateSecret_TruncateExpiry'))
+      displayName: ${{ parameters.targetEnvironment }}-Verification
+      jobs:
+        - deployment: DeploymentVerification_Approval
+          displayName: Verification_Approval
+          environment: BATR3-${{ parameters.targetEnvironment }}-approval
+          template: /generic/servicenow/close-change-stage.yml@pipetemplates
+          parameters:
+            close_status: Success
+            depends_on_job: DeploymentVerification_Approval
