@@ -140,3 +140,56 @@ jobs:
               echo "Secret '$secretName' updated successfully."
 
             done
+### Disabling old secret versions
+      - task: AzureCLI@2
+        displayName: Disable old Key Vault secret versions
+        inputs:
+          azureSubscription: ${{ variables.serviceConnectionName }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -euo pipefail
+      
+            vaultName="${{ parameters.azureKV }}"
+      
+            secretNames=$(az keyvault secret list \
+              --vault-name "$vaultName" \
+              --query "[].name" \
+              -o tsv | tr -d '\r')
+      
+            for secretName in $secretNames; do
+      
+              echo "Checking versions for secret: $secretName"
+      
+              # Get the currently active/latest version
+              currentVersionId=$(az keyvault secret show \
+                --vault-name "$vaultName" \
+                --name "$secretName" \
+                --query "id" \
+                -o tsv)
+      
+              # Get all versions
+              versionIds=$(az keyvault secret list-versions \
+                --vault-name "$vaultName" \
+                --name "$secretName" \
+                --query "[].id" \
+                -o tsv | tr -d '\r')
+      
+              for versionId in $versionIds; do
+      
+                if [ "$versionId" != "$currentVersionId" ]; then
+      
+                  echo "Disabling old version: $versionId"
+      
+                  az keyvault secret set-attributes \
+                    --id "$versionId" \
+                    --enabled false \
+                    --output none
+      
+                fi
+      
+              done
+      
+            done
+      
+            echo "Old secret versions disabled successfully."
