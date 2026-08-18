@@ -1,0 +1,153 @@
+trigger:
+  - none
+
+parameters:
+  - name: targetEnvironment
+    type: string
+    default: development
+    values:
+      - development
+      - test
+      - acceptance
+      - production
+
+  - name: azureKV
+    type: string
+    default: batr-dlz-vlt
+    values:
+      - batr-dlz-vlt
+      - batr-tlz-vlt
+      - batr-alz-vlt
+      - batr-plz-vlt
+
+  - name: rotateSecrets
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: rotateKey
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: updateKey
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: enforce_activation_date
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: enforce_expiry_date
+    type: string
+    default: 'no'
+    values:
+      - 'yes'
+      - 'no'
+
+  - name: keyName
+    type: string
+
+resources:
+  repositories:
+    - repository: pipetemplates
+      type: git
+      name: GRD0001045/pita-pipeline-templates
+      ref: refs/heads/master
+
+variables:
+  - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+
+stage: ${{ parameters.targetEnvironment }}_RotateSecret_TruncateExpiry
+dependsOn: []
+displayName: ${{ parameters.targetEnvironment }}-Secret-Expiry-Enforcement
+
+jobs:
+  - job: Truncate_KV_Secret_Expiry
+    displayName: Truncate Key Vault secret expiry dates
+    pool:
+      name: Private Pool Deployment
+
+    steps:
+      - task: AzureCLI@2
+        displayName: Truncate secret expiry dates
+        inputs:
+          azureSubscription: ${{ variables.serviceConnectionName }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            vaultName="${{ parameters.azureKV }}"
+
+            # Maximum allowed expiry = today + 365 days
+            maxExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
+            maxExpiryEpoch=$(date -u -d "$maxExpiry" +%s)
+
+            echo "Key Vault: $vaultName"
+            echo "Maximum allowed expiry: $maxExpiry"
+
+            secretNames=$(az keyvault secret list \
+              --vault-name "$vaultName" \
+              --query "[].name" \
+              -o tsv)
+
+            for secretName in $secretNames; do
+
+              expires=$(az keyvault secret show \
+                --vault-name "$vaultName" \
+                --name "$secretName" \
+                --query "attributes.expires" \
+                -o tsv)
+
+              # Skip secrets without an expiry date
+              if [ -z "$expires" ] || [ "$expires" = "null" ]; then
+                continue
+              fi
+
+              expiryEpoch=$(date -u -d "$expires" +%s)
+
+              if [ "$expiryEpoch" -gt "$maxExpiryEpoch" ]; then
+
+                echo "Secret '$secretName' exceeds 365-day expiry limit."
+                echo "Current expiry : $expires"
+                echo "New expiry     : $maxExpiry"
+
+                secretValue=$(az keyvault secret show \
+                  --vault-name "$vaultName" \
+                  --name "$secretName" \
+                  --query "value" \
+                  -o tsv)
+
+                notBefore=$(az keyvault secret show \
+                  --vault-name "$vaultName" \
+                  --name "$secretName" \
+                  --query "attributes.notBefore" \
+                  -o tsv)
+
+                if [ -n "$notBefore" ] && [ "$notBefore" != "null" ]; then
+                  az keyvault secret set \
+                    --vault-name "$vaultName" \
+                    --name "$secretName" \
+                    --value "$secretValue" \
+                    --expires "$maxExpiry" \
+                    --not-before "$notBefore"
+                else
+                  az keyvault secret set \
+                    --vault-name "$vaultName" \
+                    --name "$secretName" \
+                    --value "$secretValue" \
+                    --expires "$maxExpiry"
+                fi
+
+                echo "Expiry updated for '$secretName'."
+              fi
+            done
