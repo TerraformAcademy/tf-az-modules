@@ -99,6 +99,7 @@ stages:
                 scriptLocation: inlineScript
                 inlineScript: |
                   vaultName="${{ parameters.azureKV }}"
+                  now=$(date +%Y-%m-%d)
 
                   maxExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
                   maxExpiryEpoch=$(date -u -d "$maxExpiry" +%s)
@@ -147,7 +148,8 @@ stages:
                       --vault-name "$vaultName" \
                       --name "$secretName" \
                       --value "$secretValue" \
-                      --expires "$maxExpiry"
+                      --expires "$maxExpiry" \
+                      --not-before "$now" \
 
                     echo "Secret '$secretName' updated successfully."
 
