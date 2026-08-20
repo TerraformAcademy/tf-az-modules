@@ -219,3 +219,53 @@ stages:
           parameters:
             close_status: Success
             depends_on_job: DeploymentVerification_Approval
+
+###################################### 
+
+#!/usr/bin/env bash
+set -euo pipefail
+
+vaultName="test-vlt"
+secretName="my-secret-name"
+
+# 1. Capture the current version's id and value BEFORE creating a new version
+oldVersionId=$(az keyvault secret show \
+    --vault-name "$vaultName" \
+    --name "$secretName" \
+    --query "id" -o tsv)
+# oldVersionId looks like: https://<vault>.vault.azure.net/secrets/<name>/<version>
+oldVersion=$(basename "$oldVersionId")
+
+secretValue=$(az keyvault secret show \
+    --vault-name "$vaultName" \
+    --name "$secretName" \
+    --query "value" -o tsv)
+
+echo "Current version: $oldVersion"
+
+# 2. Compute new expiry = today + 365 days (UTC, ISO 8601)
+newExpiry=$(date -u -d "+365 days" '+%Y-%m-%dT%H:%M:%SZ')
+echo "New expiry: $newExpiry"
+
+# 3. Create a new version with the same value and the new expiry
+az keyvault secret set \
+    --vault-name "$vaultName" \
+    --name "$secretName" \
+    --value "$secretValue" \
+    --expires "$newExpiry"
+
+newVersionId=$(az keyvault secret show \
+    --vault-name "$vaultName" \
+    --name "$secretName" \
+    --query "id" -o tsv)
+newVersion=$(basename "$newVersionId")
+echo "New version created: $newVersion"
+
+# 4. Disable the OLD version explicitly (new version stays enabled)
+az keyvault secret set-attributes \
+    --vault-name "$vaultName" \
+    --name "$secretName" \
+    --version "$oldVersion" \
+    --enabled false
+
+echo "✓ Old version $oldVersion disabled. New version $newVersion is active with expiry $newExpiry."
