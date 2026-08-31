@@ -1,10 +1,20 @@
+// targetScope = 'subscription'
+
+@description('Environment being deployed')
+param environment string
+
+@description('Array containing alert configurations')
 param alerts array
 
-module metricAlerts './modules/metric-alert.bicep' = [
+@description('Common tags applied to all alert resources')
+param tags object = {}
+
+module monitorAlerts '../modules/metric-alert.bicep' = [
   for alert in alerts: {
-    name: alert.name
+    name: '${environment}-${alert.name}'
     params: {
       alert: alert
+      tags: tags
     }
   }
 ]

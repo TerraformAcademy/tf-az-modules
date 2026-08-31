@@ -1,0 +1,197 @@
+parameters:
+  - name: targetEnvironment
+    type: string
+    default: acceptance
+    values:
+      - acceptance
+      - production
+
+# - name: AlertRuleId
+#   type: string
+
+trigger: none
+
+pr: none
+
+resources:
+  repositories:
+    - repository: pipetemplates
+      type: git
+      name: GRD0001045/pita-pipeline-templates
+
+variables:
+  - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+
+pool:
+  name: Private Pool Deployment Docker
+
+stages:
+  # - stage: InfraValidation
+  #   variables:
+  #     - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+  #   jobs:
+  #     - job: InfraValidationBicep
+  #       displayName: Infra Validation Bicep
+  #       steps:
+  #         - checkout: self
+  #           path: ./s
+  #         - task: AzureCLI@2
+  #           name: LintingValidationAlertBicep
+  #           displayName: Linting Alert Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az bicep build -file ./template/alerts/batr-alerts.bicep
+  #         - task: AzureCLI@2
+  #           name: RunWhatIfAlertBicep
+  #           displayName: Deployment Preview Alert Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az deployment group what-if \
+  #                 --resource-group $(ResourceGroupName) \
+  #                 --template-file ./template/alerts/batr-alerts.bicep \
+  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+  #         - task: AzureCLI@2
+  #           name: LintingValidationConfigBicep
+  #           displayName: Linting Config Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az bicep build --file ./template/alerts/batr-alerts-config.bicep
+  #         - task: AzureCLI@2
+  #           name: RunWhatIfConfigBicep
+  #           displayName: Deployment Preview Config Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az deployment group what-if \
+  #                 --resource-group $(ResourceGroupName) \
+  #                 --template-file ./template/alerts/batr-config.bicep \
+  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+  #         - task: AzureCLI@2
+  #           name: LintingValidationGroupBicep
+  #           displayName: Linting Group Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az bicep build --file ./template/alerts/batr-action-group.bicep
+  #         - task: AzureCLI@2
+  #           name: RunWhatIfGroupBicep
+  #           displayName: Deployment Preview Group Bicep
+  #           inputs:
+  #             azureSubscription: ${{ variables.ServiceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               az deployment group what-if \
+  #                 --resource-group $(ResourceGroupName) \
+  #                 --template-file ./template/alerts/batr-group.bicep \
+  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+
+  # Preview deployment to verify deployment without making changes.
+  - stage: "Create_Change"
+    displayName: Create Change Request
+    jobs:
+      - template: /generic/servicenow/create-change.yml@pipetemplates
+        parameters:
+          app_config_id: $(SnowCI)
+          app_version_number: $(AppVersionNumber)
+          approval_environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+          # approved_by: ${{ parameters.approved_by }}
+          description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+  # - stage: "${{ parameters.targetEnvironment }} AlertsRemoval"
+  #   displayName: Delete Alerts to ${{ parameters.targetEnvironment }}
+  #   ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+  #     dependsOn: Create_Change
+  #   jobs:
+  #     - job: AlertsRemoval
+  #       displayName: Remove alerts
+  #       steps:
+  #         - task: AzureCLI@2
+  #           enabled: true
+  #           name: RemoveAlerts
+  #           displayName: Remove alerts1
+  #           inputs:
+  #             azureSubscription: ${{ variables.serviceConnectionName }}
+  #             scriptType: bash
+  #             scriptLocation: inlineScript
+  #             inlineScript: |
+  #               echo "Deleting resource: ${{ parameters.AlertRuleId }}"
+  #               az resource delete \
+  #                 --ids "${{ parameters.AlertRuleId }}" \
+  #                 --resource-group "${{ variables.resourceGroupName }}"
+
+  - stage: "${{ parameters.targetEnvironment }}_AlertsDeployment"
+    displayName: Deploy Alerts to ${{ parameters.targetEnvironment }}
+    # ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}:
+    #   dependsOn: ${{ parameters.targetEnvironment }}_AlertsRemoval
+    jobs:
+      - job: CreateMonitoring_Alerts
+        displayName: Deploy BATR Alerts for ${{ parameters.targetEnvironment }}
+        steps:
+          - checkout: self
+            path: ./s
+
+          - task: AzureResourceManagerTemplateDeployment@3
+            name: CreateActionGroup
+            displayName: Create Action Group
+            inputs:
+              action: "Create Or Update Resource Group"
+              azureResourceManagerConnection: "${{ variables.serviceConnectionName }}"
+              csmFile: "./template/alerts/batr-action-group.bicep"
+              overrideParameters: '-env "${{ variables.env }}" -emailAddress "${{ variables.emailAddress }}"'
+              deploymentMode: "Incremental"
+              deploymentOutputs: "resourceGroupDeploymentOutputs"
+              deploymentScope: "Resource Group"
+              resourceGroupName: "${{ variables.resourceGroupName }}"
+              location: "${{ variables.location }}"
+              subscriptionId: "${{ variables.subscriptionId }}"
+              templateLocation: "Linked artifact"
+
+          - task: AzureResourceManagerTemplateDeployment@3
+            name: CreateMonitoringAlerts
+            displayName: Create Monitoring Alert
+            inputs:
+              action: "Create Or Update Resource Group"
+              azureResourceManagerConnection: "${{ variables.serviceConnectionName }}"
+              csmFile: "./template/alerts/batr-alerts.bicep"
+              overrideParameters: '-env "${{ variables.env }}"'
+              deploymentMode: "Incremental"
+              deploymentOutputs: "resourceGroupDeploymentOutputs"
+              deploymentScope: "Resource Group"
+              resourceGroupName: "${{ variables.resourceGroupName }}"
+              location: "${{ variables.location }}"
+              subscriptionId: "${{ variables.subscriptionId }}"
+              templateLocation: "Linked artifact"
+
+  - stage: "${{ parameters.targetEnvironment }}_close_failed_servicenow_change"
+    dependsOn: "${{ parameters.targetEnvironment }}_AlertsDeployment"
+    condition: failed()
+    displayName: Close-failed-ServiceNow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: "Failure"
+          closing_in_other_stage: true
+
+  - stage: "${{ parameters.targetEnvironment }}_close_successful_servicenow_change"
+    dependsOn: "${{ parameters.targetEnvironment }}_AlertsDeployment"
+    condition: succeeded()
+    displayName: Close-successful-ServiceNow-change
+    jobs:
+      - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+        parameters:
+          close_status: "Success"
+          closing_in_other_stage: true
