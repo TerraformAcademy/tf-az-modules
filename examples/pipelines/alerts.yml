@@ -26,78 +26,79 @@ pool:
   name: Private Pool Deployment Docker
 
 stages:
-  # - stage: InfraValidation
-  #   variables:
-  #     - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
-  #   jobs:
-  #     - job: InfraValidationBicep
-  #       displayName: Infra Validation Bicep
-  #       steps:
-  #         - checkout: self
-  #           path: ./s
-  #         - task: AzureCLI@2
-  #           name: LintingValidationAlertBicep
-  #           displayName: Linting Alert Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az bicep build -file ./template/alerts/batr-alerts.bicep
-  #         - task: AzureCLI@2
-  #           name: RunWhatIfAlertBicep
-  #           displayName: Deployment Preview Alert Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az deployment group what-if \
-  #                 --resource-group $(ResourceGroupName) \
-  #                 --template-file ./template/alerts/batr-alerts.bicep \
-  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
-  #         - task: AzureCLI@2
-  #           name: LintingValidationConfigBicep
-  #           displayName: Linting Config Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az bicep build --file ./template/alerts/batr-alerts-config.bicep
-  #         - task: AzureCLI@2
-  #           name: RunWhatIfConfigBicep
-  #           displayName: Deployment Preview Config Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az deployment group what-if \
-  #                 --resource-group $(ResourceGroupName) \
-  #                 --template-file ./template/alerts/batr-config.bicep \
-  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
-  #         - task: AzureCLI@2
-  #           name: LintingValidationGroupBicep
-  #           displayName: Linting Group Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az bicep build --file ./template/alerts/batr-action-group.bicep
-  #         - task: AzureCLI@2
-  #           name: RunWhatIfGroupBicep
-  #           displayName: Deployment Preview Group Bicep
-  #           inputs:
-  #             azureSubscription: ${{ variables.ServiceConnectionName }}
-  #             scriptType: bash
-  #             scriptLocation: inlineScript
-  #             inlineScript: |
-  #               az deployment group what-if \
-  #                 --resource-group $(ResourceGroupName) \
-  #                 --template-file ./template/alerts/batr-group.bicep \
-  #                 --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+  - stage: InfraValidation
+    displayName: Infra Validation
+    variables:
+      - template: ../../parameter/${{ parameters.targetEnvironment }}.variables.yml
+    jobs:
+      - job: InfraValidationBicep
+        displayName: Infra Validation Bicep
+        steps:
+          - checkout: self
+            path: ./s
+          - task: AzureCLI@2
+            name: LintingValidationAlertBicep
+            displayName: Linting Alert Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build -file ./template/alerts/batr-alerts.bicep
+          - task: AzureCLI@2
+            name: RunWhatIfAlertBicep
+            displayName: Deployment Preview Alert Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(ResourceGroupName) \
+                  --template-file ./template/alerts/batr-alerts.bicep \
+                  --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+          - task: AzureCLI@2
+            name: LintingValidationConfigBicep
+            displayName: Linting Config Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build --file ./template/alerts/batr-alerts-config.bicep
+          - task: AzureCLI@2
+            name: RunWhatIfConfigBicep
+            displayName: Deployment Preview Config Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(ResourceGroupName) \
+                  --template-file ./template/alerts/batr-config.bicep \
+                  --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
+          - task: AzureCLI@2
+            name: LintingValidationGroupBicep
+            displayName: Linting Group Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az bicep build --file ./template/alerts/batr-action-group.bicep
+          - task: AzureCLI@2
+            name: RunWhatIfGroupBicep
+            displayName: Deployment Preview Group Bicep
+            inputs:
+              azureSubscription: ${{ variables.ServiceConnectionName }}
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group $(ResourceGroupName) \
+                  --template-file ./template/alerts/batr-group.bicep \
+                  --parameters ../../parameter/bicep.parameters.${{ parameters.targetEnvironment }}.json
 
   # Preview deployment to verify deployment without making changes.
   - stage: "Create_Change"
