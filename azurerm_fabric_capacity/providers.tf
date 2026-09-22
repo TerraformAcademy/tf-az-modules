@@ -1,0 +1,1 @@
+nslookup adf-ahs-us1-prd-edlnpd-001.datafactory.azure.net
