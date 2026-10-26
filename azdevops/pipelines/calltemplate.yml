@@ -1,0 +1,18 @@
+stages:
+- stage: '${{ parameters.targetEnvironment }}_CreateandStoreProviderClientSecret'
+  displayName: '${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecret'
+  jobs:
+  - job: Job1
+    displayName: 'Create and Store Provider Client Secret'
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: ${{ parameters.azureSubscription }}
+        scriptType: 'pscore'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Call the create-spn.ps1 script to create the service principal and store the secret in Key Vault
+          .\create-spn.ps1 -keyVaultName ${{ variables.keyVaultName }} -secretName ${{ variables.ProviderServicePrincipalSecretName }} -azureSubscription ${{ parameters.azureSubscription }}
+  - template: test-template.yml
+    parameters:
+      job_name: 'Job1'

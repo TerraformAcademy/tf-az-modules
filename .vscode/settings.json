@@ -1,0 +1,8 @@
+{
+    "yaml.disableSchemaDetection": [
+        "file:///c%3A/AK/Github/tf-az-modules/azdevops/pipelines/spn-raw.yml"
+    ],
+    "yaml.schemas": {
+        "https://www.schemastore.org/sourcehut-build-0.65.0.json": "file:///c%3A/AK/Github/tf-az-modules/azdevops/pipelines/spn-raw.yml"
+    }
+}

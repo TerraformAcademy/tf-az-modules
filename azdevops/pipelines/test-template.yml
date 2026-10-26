@@ -1,0 +1,29 @@
+parameters:
+  - name: job_name 
+    type: string
+
+
+jobs:
+- job: ${{ parameters.job_name }}
+  displayName: ${{ parameters.job_name }}
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+    - checkout: self
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Running job: ${{ parameters.job_name }}"
+- job: job2
+  displayName: "job2"
+  dependsOn: ${{ parameters.job_name }}
+  pool:
+    vmImage: 'ubuntu-latest'
+  steps:
+    - checkout: self
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          Write-Host "Running job:job2"

@@ -1,0 +1,1039 @@
+# This is an example YAML pipeline that is provided by the FTT team since October 2022 to be used as a started pipeline for transition customers.
+# This YAML pipeline file can be used in FSCP 3.0 Landing Zone environments to deploy Azure Resources.
+# PIPE team have created reusable Templates and Mandatory Building blocks which can be used in the CI/CD Pipelines to save developers time and to be in control,
+# Please check PIPE wiki page for more information about all the templates and building blocks usage- https://dev.azure.com/cbsp-abnamro/GRD0001045/ wiki/wikis/PITA%20templates/11780/pipeline-templates
+
+name: SPN Configuration
+
+# Parameters: This will help to pass the values to your pipeline templates during run time or by default. This will help you running a pipeline with certain values by changing it as required.
+
+parameters:
+- name: targetEnvironment # The LZ environment to deploy to.
+  type: string
+  default: development
+  values:
+   - development
+   - test
+   - acceptance
+   - production
+
+- name: Action # The LZ environment to deploy to.
+  type: string
+  default: Create/Update Provider SPN
+  values:
+    - Create/Update Provider SPN
+    - Create/Update Consumer SPN
+    - Create/Update Consumer SPN For BATR-AZ-IAG
+    - Create/Update Consumer SPN For DIAL-AZ-IAG
+    - Add/Update Consumer SPN BATR-AZ-IAG To Security Group
+    - Add/Update Consumer SPN DIAL-AZ-IAG To Security Group
+    - Create/Store Provider Secret
+    - Create/Store Consumer Secret
+    - Create/Store Consumer Secret for BATR-AZ-IAG
+    - Create/Store Consumer Secret for DIAL-AZ-IAG
+    - Create App Role
+    - Set User Assignment for Internal Use
+    - Set User Assignment for CATR
+
+# Variables: These are general variables which also can be used to pass values to your tasks in stages and jobs.
+# Variables declared below are considered as global variables which are used in all the stages and jobs in this entire pipeline.
+
+variables:
+# Variable templates can be used in combination with group variables having pipeline specific variables.
+# Where variable groups contain variables which remain the same for all pipelines consuming that particular variable group.
+# Variable templates can be defined on a global, stage and job level so specific variable templates can be used for specific DTAP deploymments or within loops.
+
+- template: ../../parameter/global.variables.yml
+
+repositories:
+  - repository: pipetemplates
+    type: git
+    name: 'GRD0001045/pita-pipeline-templates'
+    ref: 'refs/heads/master'
+
+# A pipeline with no Cl trigger 
+trigger: none
+
+# Don't run against PRs
+pr: none
+
+# Get the agent pool to use from global variables
+pool:
+ vmimage: windows-latest
+
+# Stages are used to define your pipeline stages like Build, Create Infrastructure, Deploy, Verification
+
+stages:
+
+#STAGE: Infrastructure Validation
+
+#Infra validation is recommended to validate code syntax and do a preview deployment without doing actual changes.
+
+#No changes will be made when there's an error in the validation stage.
+
+#-stage: ${{ parameters.targetEnvironment }} New ProviderSPN
+
+## The condition here is set to only allow continuation if the previous stage state is successful.
+## See for more info on pipeline conditions. https://learn.microsoft.com/en-us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml
+# condition: succeeded()
+# variables:
+# - template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+# jobs:
+
+# # Bicep Infrastructure Deployment
+
+# -${{ if in(parameters.targetEnvironment, 'acceptance' production') }}:
+# - ${{ if in(parameters.Action, 'Create/Update Provider SPN') }}:
+#- template:/generic/servicenow/create.change.yml@pipetemplates
+# parameters: 
+#app.config id: $(SnowCl) 
+#app version number: $(AppVersionNumber)
+
+#approval. environment: 'BATR3-${{parameters.targetEnvironment}}-approval'
+#approved_by: ${{ parameters.approved by }}
+
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+# - job: NewProviderSPN
+
+# displayName: NewProviderSPN
+# #With an Azure Devops Environment you can set approvals and security,https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+
+# If you don't need ADO Environments replace the respective lines it for a regular job.
+# steps:
+#-${{ if in(parameters.Action, 'Create/Update Provider SPN') }}:
+#- checkout: self
+#path: ./s/self
+
+#- task: Azure PowerShell@5
+# enabled: true
+#displayName: New Service Principal
+# inputs:
+#azureSubscription: ${{ variables.serviceConnectionName }}
+#ScriptType: 'InlineScript'
+#azure PowerShell Version: 'Latest Version'
+#Inline: |
+#$token = (Get-AzAccessToken -ResourceUrl "https://managedsp-sp.abnamro.com").Token
+# $uri = "https://it4it.abnamro.com/tjerafunctions/managedsp/New-Service Principal"
+
+#$headers = @{
+#"Authorization" = "Bearer $token"
+#"Content-Type" = "application/json"
+# }
+
+#$body = @{
+#"DisplayName" = "${{ variables. Provider ervice Principal Name }}"
+#} | ConvertTo-Json -Compress
+
+#Try {
+#$result = Invoke-RestMethod-Uri Şurj -Method "Post" -Headers $headers -Body $body-UseBasicParsing
+#}
+
+#Catch {
+#$streamReader =[System.IO.StreamReader]::new($_.Exception.Response.GetResponseStream())
+#$errResp = $streamReader.ReadToEnd() | ConvertFrom-Json
+#$streamReader.Close()
+#}
+
+#If (SerrResp) {
+
+#Write-Error "There was an issue creating the SPN. Error: $(SerrResp | Format-List | Out-String)"
+
+#}
+
+# Else {
+
+#
+#
+#Write-Host "Function App finished successfully. Output: $($result | Format-List | Out-String)"
+
+#}
+
+
+
+#${{ if in(parameters.targetEnvironment, 'acceptance','production')}}:
+#${{ if in(parameters.Action, 'Create/Update Provider SPN') }}:
+# - stage: '${{ parameters.targetEnvironment }} NewProviderSPNVerification'
+
+# dependson: '${{ parameters.targetEnvironment }} NewProviderSPN'
+# condition: or(failed(), succeeded('${{ parameters.targetEnvironment }} New ProviderSPN'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification
+#jobs:
+# - deployment: DeploymentVerification. Approval
+#displayName: Verification Approval
+# environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+# template:/generic/servicenow/close-change-stage.yml@pipetemplates
+#parameters:
+# close status: 'Success'
+#depends on job: 'Deployment Verification. Approval'
+
+#- stage:
+#'${{ parameters.targetEnvironment }} New ProviderSPN close failed servicenow change'
+# dependsOn:
+# - ${{ parameters.targetEnvironment}} New ProviderSPNVerification
+# condition:or(and(not(succeeded('${{ parameters.targetEnvironment }} New ProviderSPNVerification')),eq(variables['System.StageAttempt'], 1)), canceled())
+# displayName: Close-failed-ServiceNow-change
+#jobs:
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+# parameters:
+# close status: 'Failure'
+
+#${{ if in(parameters.Action, 'Create/Update Consumer SPN') }}:
+# - stage: ${{ parameters.targetEnvironment }} NewConsumerSPN
+# # The condition here is set to only allow continuation if the previous stage state is successful.
+# # See for more info on pipeline conditions: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml 
+ # condition: succeeded()
+ # variables: #
+ #- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+# jobs:
+
+# # Bicep Infrastructure Deployment
+
+#- ${{ if in(parameters.targetEnvironment, 'acceptance','production') }}:
+
+#- ${{ if in(parameters.Action, 'Create/Update Consumer SPN') }}:
+
+#- template: /generic/servicenow/create-change.yml@pipetemplates
+
+# parameters:
+# app.config id: $(SnowCJ)
+# app...version number: $(AppVersion Number)
+# approval environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+#approved_by: ${{ parameters.approved by }}
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+#- job: NewConsumerSP.N
+
+# displayName: NewConsumerSPN
+
+# # With an Azure Devops Environment you can set approvals and security,
+
+# https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+# If you don't need ADO Environments replace the respective lines it for a regular job.
+# steps:
+#- ${{ if in(parameters, Action, 'Create/Update Consumer SPN') }}:
+#- checkout: self
+# path: ./s/self
+
+#- task: Azure PowerShell@5
+# enabled: true
+# displayName: New Service Principal
+# inputs:
+# azureSubscription: ${{ yariables.serviceConnectionName }}
+# ScriptType: 'InlineScript'
+# azurePowerShellVersion: 'LatestVersion
+# Inline: |
+# $token = (Get-AzAccessToken -ResourceUrl "https://managedsp-sp.abnamro.com").Token
+
+# $uri = "https://it4it.abnamro.com/tierafunctions/managedsp/New-Service Principal"
+
+#$headers = @{
+#"Authorization" = "Bearer $token"
+#"Content-Type" = "application/json"
+# }
+
+#$body = @{"DisplayName" = "${{ variables.Consumer Service PrincipalName }}" } | ConvertTo-Json -Compress
+
+# Try {
+# $result = Invoke-BestMethod -Uri Şurj -Method "Post" -Headers $headers-Body
+#$body-UseBasicParsing
+
+#}
+
+#Catch {
+
+#$streamReader =
+# [System.IO.StreamReader]::new($.Exception.Response, GetResponseStream())
+#SerrResp = $streamReader.ReadToEnd() | ConvertFrom-Json
+#$streamReader.Close()
+#}
+#If ($errResp) {
+# Write-Error "There was an issue creating the SPN. Error: $($errResp | Format-List | Out-String)"
+
+#}
+
+#Else {
+# Write-Host "Function App finished successfully. Output: $($result | Format-List |Out-String)"
+
+#}
+#${{ if in (parameters.targetEnvironment, 'acceptance','production') }}:
+#${{ if in (parameters.Action, 'Create/Update Consumer SPN') }}:
+# - stage: '${{ parameters.targetEnvironment }} NewConsumerSPNVerification'
+
+#dependson: '${{ parameters.targetEnvironment }} NewConsumerSPN'
+# condition: or(failed(),succeeded('${{ parameters.targetEnvironment }} NewConsumerSPN'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification
+# jobs:
+# deployment: DeploymentVerification Approval
+#displayName: Verification Approval
+
+#environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+
+# parameters: #
+#close status 'Success'
+
+#depends on job 'DeploymentVerification Approval'
+
+# - stage:
+#'${{ parameters.targetEnvironment }} NewConsumerSPN close failed servicenow.change'
+
+# dependson:
+#-${{ parameters.targetEnvironment}} NewConsumerSPNVerification
+
+# condition: or(and(not(succeeded('${{ parameters.targetEnvironment}} NewConsumerSPNVerification')), eq(variables['System.StageAttempt'], 1)), canceled())
+
+# displayName: Close-failed-ServiceNow-change #
+
+# jobs:
+
+# - template/generic/servicenow/close-change-stage.yml@pipetemplates
+# parameters:
+# close_status: ‘Failure’
+
+# # Added new deployement job for BATR-AZ-IAG US: 4527227
+
+# -${{ if in(parameters.Action, 'Create/Update Consumer SPN For BATR-AZ-IAG') :
+#stage: ${{ parameters.targetEnvironment }} New ConsumerSPN BATR AZIAG 
+# # The condition here is set to only allow continuation if the previous stage state issuccessful.
+
+# # See for more info on pipeline conditions: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml
+
+# condition: succeeded()
+# variables:
+#- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+# jobs:
+#
+# # Bicep Infrastructure Deployment
+
+#- ${{ if in(parameters.targetEnvironment, 'acceptance', 'production') }}: 
+#- ${{ if in(parameters.Action, 'Create/Update Consumer SPN For BATR-AZ-IAG') }}:
+
+# - template: /generic/servicenow/create-change.xml@pipetemplates
+
+# parameters:
+
+# app.config id: $(SnowCl)
+
+# app version number: $(AppVersionNumber)
+
+#approval environment: 'BATR3-${{ parameters.targetEnvironment }}-approval
+
+#approved_by: ${{ parameters.approved by }}
+
+## description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+
+#-job: NewConsumerSPNBATRAZAIG
+
+#displayName: NewConsumerSPNBATRAZAIG
+
+# # With an Azure Devops Environment you can set approvals and security, https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+
+# If you don't need ADO Environments replace the respective lines it for a regular job.
+
+# steps:
+
+#- ${{ if in(parameters, Action, 'Create/Update Consumer SPN For BATR-AZ-IAG') }}:
+
+# checkout: self
+
+# path: ./s/self
+
+#- task: Azure PowerShell@5
+
+# enabled: true
+
+# displayName: New Service Principal
+
+# inputs:
+# azureSubscription: ${{ variables.serviceConnectionName }}
+# ScriptType: 'InlineScript'
+#azure PowerShellVersion: 'LatestVersion'
+
+#Inline: |
+#$token = (Get-AzAccessToken -ResourceUrl "https://managedsp-sp.abnamro.com").Token
+
+#Surj = "https://it4it.abnamro.com/tierafunctions/managedsp/New-Service Principal"
+
+#$headers = @{
+
+#"Authorization" = "Bearer $token"
+
+# }
+
+#"Content-Type" = "application/json"
+#}
+
+#$body = @{000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+# "DisplayName" = "${{ variables.Consumer Service PrincipalNameAzAig }}" }| ConvertTo-Json -Compress
+
+# Try {
+
+#$result = Invoke-RestMethod -Uri Şuri -Method "Post" -Headers $headers-Body Sbody Use BasicParsing
+
+#}
+# Catch {
+
+#$streamReader = [System.IO.StreamReader]::new($_Exception.Response.GetResponseStream())
+
+# SerrResp = $streamReader.ReadToEnd() | ConvertFrom-Json # $streamReader.Close()
+
+
+#}
+
+#If ($errRese) {
+
+#Write-Error "There was an issue creating the SPN. Error: $($errResp | Format-List | Out-String)"
+
+#
+
+#Else {
+
+#Write-Host "Function App finished successfully. Output: $($result | Format-List | Out-String)"
+
+#}
+
+#${{ if in(parameters.targetEnvironment, 'acceptance 'production') }}:
+
+# -${{ if in(parameters.Action, 'Create/Update Consumer SPN For BATR-AZ-IAG') }}:
+
+# - stage:
+#'${{ parameters.targetEnvironment }} NewConsumerSPNVerification BATR AZIAG'
+
+# dependsOn: '${{ parameters.targetEnvironment}} NewConsumerSPN. BATR AZIAG'
+
+# condition: or(failed(), succeeded('${{ parameters.targetEnvironment }} New ConsumerSPN. BATR AZIAG'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification
+
+# jobs:
+
+# - deployment: DeploymentVerification. Approval
+
+# displayName: Verification Approval
+
+#environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+
+# parameters:
+
+# close status: 'Success'
+
+#depends on job: 'DeploymentVerification Approval'
+
+# - stage:
+
+#'${{ parameters.targetEnvironment}} NewConsumerSPN BATR AZIAG close failed servicenow.change
+
+# dependsOn:
+
+# - ${{ parameters.targetEnvironment }} NewConsumerSPNVerification BATR AZIAG
+
+# condition: or(and(not(succeeded('${{ parameters.targetEnvironment }} NewConsumerSPNVerification BA TRAZIAG')), eq(variables['System StageAttempt'], 1)), canceled())
+
+# displayName: Close-failed-ServiceNow-change
+
+# jobs:
+
+# # -template: /generic/servicenow/close-change-stage.xml@pipetemplates
+
+# parameters:
+
+#close status: 'Failure'
+
+#${{ if in(parameters.Action, 'Create/Update Consumer SPN For DIAL-AZ-IAG') }}:
+
+#stage: ${{ parameters.targetEnvironment }} NewConsumerSPN DIAL AZIAG
+
+## The condition here is set to only allow continuation if the previous stage state is
+
+#condition: succeeded()
+#variables:
+
+#- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+# jobs:
+
+# #Bicep Infrastructure Deployment
+
+#-${{ if in( parameters.targetEnvironment, 'acceptance' production') }}:
+
+#-${{ if in (parameters.Action, 'Create/Update Consumer SPN For DIAL-AZ-IAG') }}:
+
+#- template: /generic/servicenow/create.change.yml@pipetemplates
+
+# parameters:
+
+# app.config.id: $(SnowCI)
+
+# app version number: $(AppVersionNumber)
+
+# approval environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#approved_by: ${{ parameters.approved by ) }}
+
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+#- job: NewConsumerSPNDIALAZAIG
+
+# displayName: New ConsumerSPNDIALAZAIG
+
+# With an Azure Devops Environment you can set approvals and security, #https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+# # If you don't need ADO Environments replace the respective lines it for a regular job.
+
+#steps:
+
+#
+
+#- ${{ if in (parameters.Action, 'Create/Update Consumer SPN For DIAL-AZ-IAG') }}:
+
+#- checkout: self
+
+#path: ./s/self
+
+#
+#- task: Azure PowerShell@5
+# enabled: true
+# displayName: New Service Principal
+# inputs:
+# azureSubscription: ${{ variables.serviceConnectionName }}
+
+#ScriptType: 'InlineScript'
+# azure PowerShell Version: 'LatestVersion'
+# Inline: | $token = (Get-AzAccessToken -ResourceUrl "https://managedsp-sp.abnamro.com").Token
+
+#$uri = "https://it4it.abnamro.com/tierafunctions/managedsp/New-Service Principal"
+
+#$headers = @{
+#"Authorization" = "Bearer $token"
+#"Content-Type" = "application/json"
+
+# $body = @{
+
+#"DisplayName" = "${{ variables.Consumer Service Principal Name DailAzlag }}" }| ConvertTo-Json -Compress
+
+#Try {
+
+# $result = Invoke-RestMethod -Uri Şuri -Method "Post" -Headers $headers-Body $body-UseBasicParsing
+
+#} Catch {
+
+#$streamReader = [System.IO.StreamReader]::new($_.Exception. Response.GetResponseStream())
+ # $errResp = $streamReader, Read To End() | ConvertFrom-Json
+ # $streamReader.Close()
+#}
+
+#If ($errResp) {
+
+# Write-Error "There was an issue creating the SPN. Error: $(SerrResp | Format-List | Out-String)"
+
+#}
+
+# Else {
+
+#Write-Host "Function App finished successfully. Output: $($result | Format-List | Out-String)"
+
+#}
+
+#${{ if in (parameters.targetEnvironment, 'acceptance''production') }}:
+
+#${{ if in (parameters.Action, 'Create/Update Consumer SPN For DIAL-AZ-IAG') }}: 
+#- stage: '${{ parameters.targetEnvironment }} NewConsumerSPNVerification DIAL AZIAG
+
+# dependsOn: '${{ parameters.targetEnvironment }} NewConsumerSPN. DIAL AZIAG'
+
+# condition: or(failed(), succeeded('${{ parameters.targetEnvironment }} New ConsumerSPN DIAL AZIAG'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification
+
+#
+
+# jobs:
+
+#
+
+#- deployment: DeploymentVerification Approval
+
+# displayName: Verification Approval
+
+# environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#- template: /generic/servicenow/close-change-stage.xml@pipetemplates
+
+# parameters:
+
+# close status: 'Success'
+
+# depends on job: 'DeploymentVerification Approval'
+
+# - stage:
+
+#'${{ parameters.targetEnvironment }) NewConsumerSPN DIAL AZIAG close failed servicenowchange'
+
+# dependson:
+
+#- ${{ parameters.targetEnvironment}} NewConsumerSPNVerification DIAL AZIAG
+
+# - stage:
+#'${{ parameters.targetEnvironment }} NewConsumerSPN DIAL AZIAG close failed servicenowchange'
+
+# dependson:
+
+#-${{ parameters.targetEnvironment }} NewConsumerSPNVerification DIAL AZIAG
+
+# condition: or(and(not(succeeded('${{ parameters.targetEnvironment }} NewConsumerSPNVerification DIA LAZIAG')), eq(variables['System Stage Attempt' ], 1)), canceled())
+
+#displayName: Close-failed-ServiceNow-change
+# dependson: jobs:
+# - template:/generic/servicenow/close-change-stage.xml@pipetemplates
+
+# parameters:
+
+# close status: 'Failure'
+
+#${{ if in(parameters.Action, 'Add/Update Consumer SPN BATR-AZ-IAG To Security Group') }}:
+
+#-stage: ${{ parameters.targetEnvironment }} AddConsumerSPN.TO.SG
+
+# # The condition here is set to only allow continuation if the previous stage state issuccessful.
+
+# # See for more info on pipeline conditions: https://learn.microsoft.com/en- us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml
+
+# condition: succeeded() #
+
+# variables:
+
+# - template: ../../parameter/${{parameters.targetEnvironment}}.variables.xml
+
+# jobs:
+
+#
+
+- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+# jobs:
+
+#
+
+# # Bicep Infrastructure Deployment
+
+#- ${{ if in(parameters.targetEnvironment, 'acceptance','production') }}:
+
+# - ${{ if in(parameters Action, 'Add/Update Consumer SPN BATR-AZ-IAG To SecurityGroup') }}:
+
+# - template: /generic/servicenow/create.change.yml@pipetemplates
+
+# parameters:
+
+# app.config. id: $(SnowCJ)
+
+# app version number: $(AppVersionNumber)
+
+# approval environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#approved_by: ${{ parameters.approved by }}
+
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+# - job: AddConsumer SPNBATRAZAIGTOSG
+
+#
+
+# displayName: AddConsumerSPNBATRAZAIGTOSG
+
+# # With an Azure Devops Environment you can set approvals and security, https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+
+# # If you don't need ADO Environments replace the respective lines it for a regular job.
+
+# steps:
+
+#- ${{ if in(parameters.Action, 'Add/Update Consumer SPN BATR-AZ-IAG To Security Group') });
+#
+#- checkout: self
+#path: ./s/self
+
+#- task: Azure PowerShell@5
+
+#name: AddConsumerSPNtoSecurityGroup
+
+#displayName: 'AddConsumerSPN to SecurityGroup'
+
+#inputs:
+
+#azureSubscription: '${{ variables serviceConnectionName }}'
+
+# pwsh: true
+
+#azure PowerShell Version: Latest Version
+
+#scriptPath: 'S(System.DefaultWorkingDirectory)/xml/spn/scripts/addconsumerspntosg.ps1'
+
+#ScriptArguments: '-SPNName ${{ variables.ConsumerService PrincipalNameAzAig }}'
+
+# ${{ if in(parameters.targetEnvironment, 'acceptance','production') }}:
+
+#
+
+#
+
+#${{ if in(parameters.Action, 'Add/Update Consumer SPN BATR-AZ-IAG To Security Group') }}:
+
+#- stage: '${{ parameters.targetEnvironment }} AddConsumerSPNVerification TO SG' 
+# dependsOn: '${{ parameters.targetEnvironment }} AddConsumerSPN TO SG'
+
+# condition: or(failed(), succeeded('${{ parameters.targetEnvironment }} AddConsumerSPN TO SG'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification
+
+#
+# jobs:
+#- deployment: Deployment Verification. Approval
+# displayName: Verification Approval
+# environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+
+# parameters:
+
+# close status: 'Success'
+
+# depends on job: 'DeploymentVerification Approval
+
+# - stage:
+
+# 'S{{ parameters.targetEnvironment }} AddConsumerSPN TO SG close failed servicenow change’
+
+# ${{ parameters.targetEnvironment}} AddConsumerSPN. TO SG close failed servicenow.chan
+# dependson:
+
+#- ${{ parameters.targetEnvironment}}_AddConsumerSPNVerification. TO SG
+
+# condition: or(and(not(succeeded('${{ parameters.targetEnvironment }} AddConsumerSPNVerification TO SG')), eq(variables['System.StageAttempt'], 1)), canceled())
+
+# displayName: Close-failed-ServiceNow-change #
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+
+jobs: #
+
+#
+
+#parameters:
+
+# close status: 'Failure'
+
+#${{ if in(parameters.Action, 'Add/Update Consumer SPN DIAL-AZ-IAG To Security Group') }}: #
+
+#- stage: ${{ parameters.targetEnvironment }} AddConsumerSPN. TO SG
+
+# # The condition here is set to only allow continuation if the previous stage state issuccessful.
+
+# # See for more info on pipeline conditions: https://learn.microsoft.com/en- us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml
+
+# condition: succeeded() #
+
+# variables:
+
+#- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+#
+
+# jobs:
+
+#
+
+# #Bicep Infrastructure Deployment
+
+# -${{ if in(parameters.targetEnvironment, 'acceptance','production')}}
+
+-${{ if in(parameters.Action, 'Add/Update Consumer SPN DIAL-AZ-IAG To Security Group') }}:
+
+#- template: /generic/servicenow/create-change.yml@pipetemplates
+
+# parameters:
+
+# app.config.id: $(SnowCl)
+
+# app version number: $(AppVersionNumber)
+
+# approval environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#approved_by: ${{ parameters.approved by }}
+
+# description: 'Create/Update ${{ parameters.targetEnvironment }}_infrastructure'
+
+#- job: AddConsumerSPNDIALAZAIGTOSG
+
+# displayName: AddConsumer SPNDIALAZAIGTOSG
+# If you don't need ADO Environments replace the respective lines it for a regular job.
+
+# With an Azure Devops Environment you can set approvals and security, https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-
+
+# steps:
+
+#- ${{ if in(parameters, Action, 'Add/Update Consumer SPN DIAL-AZ-IAG To Security
+Group') }}:
+
+#- checkout. self
+
+# path: ./s/self
+
+#- task: Azure PowerShell@5
+
+# name: AddConsumerSPNtoSecurityGroup
+#displayName: 'Add ConsumerSPN to SecurityGroup'
+
+# inputs:
+# azure Subscription: '${{variables.serviceConnectionName }}'
+
+# pwsh: true
+
+# azure PowerShell Version: Latest Version
+
+# scriptPath:'$(System.Default Working Directory)/xml/Spn/scripts/addconsumerspntosg.ps1'
+
+#ScriptArguments: '-SPNName${{variables Consumer Service PrincipalName DailAzlag }}'
+
+#${{ if in (parameters.targetEnvironment, 'acceptance' production') }}
+
+#${{ if in (parameters.Action, 'Add/Update Consumer SPN DIAL-AZ-IAG To SecurityGroup') }}:
+
+#stage: '${{ parameters.targetEnvironment }} AddConsumerSPNVerification. TO SG 
+# dependsOn: '${{ parameters.targetEnvironment }} AddConsumerSPN TO SG'
+
+# condition: or(failed(), succeeded('${{ parameters.targetEnvironment }} AddConsumerSPN TO SG'))
+
+# displayName: ${{ parameters.targetEnvironment }}-Verification #
+#jobs:
+
+#- deployment: Deployment Verification. Approval
+
+# displayName: Verification Approval
+
+# environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+# parameters.
+
+#
+
+#- template:/generic/servicenow/close-change-stage.yml@pipetemplates
+
+# close status: 'Success'
+
+# depends on job: 'DeploymentVerification Approval'
+
+# - stage:
+
+#'${{ parameters.targetEnvironment }} AddConsumerSPN TO SG close failed servicenow.chan
+
+dependson: #
+
+#${{ parameters.targetEnvironment }) AddConsumerSPNVerification. TO SG
+
+# condition:or(and(not(succeeded('${{ parameters.targetEnvironment}} AddConsumerSPNVerification TOSG')), eq(variables['System.StageAttempt'], 1)), canceled())
+
+# displayName: Close-failed-ServiceNow-change
+# jobs:
+# - template: /generic/servicenow/close-change-stage.yml@pipetemplates
+# parameters:
+
+# close status: 'Failure'
+
+#${{ if in(parameters.Action, 'Create/Store Provider Secret') }}:
+
+#-stage: ${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecretsuccessful.
+
+# #The condition here is set to only allow continuation if the previous stage state is
+
+## See for more info on pipeline conditions: https://learn.microsoft.com/en-us/azure/devops/pipelines/process/conditions?view=azure-devops&tabs=yaml
+
+#condition: succeeded()
+
+# variables:
+
+#- template: ../../parameter/${{parameters.targetEnvironment}}.variables.yml
+
+# jobs
+
+#
+
+# #Bicep Infrastructure Deployment
+
+#
+
+#- ${{ if in(parameters.targetEnvironment, 'acceptance','production') }}:
+
+#-${{ if in(parameters.Action, 'Create/Store Provider Secret') }}:
+#- template: /generic/servicenow/create-change.yml@pipetemplates
+
+# parameters:
+# app.config id: $(SnowCl)
+
+# app version number: $(AppVersionNumber)
+
+# approval environment: 'BATR3-${{ parameters.targetEnvironment)}-approval'
+
+#approved_by: ${{ parameters.approved by }) # # description: 'Create/Update ${{ parameters.targetEnvironment}}_infrastructure'
+
+#-job: CreateandStoreClientSecret
+
+#displayName: CreateandStoreClientSecret
+
+# # With an Azure Devops Environment you can set approvals and security, https://learn.microsoft.com/en-us/azure/devops/pipelines/process/environments?view=azure-devops
+
+# If you don't need ADO Environments replace the respective lines it for a regular job.
+
+#
+
+#
+
+#
+
+#${{ if in (parameters, Action, 'Create/Store Provider Secret') }}:
+
+steps:
+
+- checkout: self
+
+#
+
+path: ./s/self
+
+#- task: Azure PowerShell@5
+
+# enabled: true
+
+# displayName: Add client secret
+
+# inputs:
+
+# azureSubscription: ${{variables.serviceConnectionName }}
+
+# ScriptType: 'InlineScript'
+
+# azure PowerShell Version: 'LatestVersion'
+
+# Inline: |
+#  $token = (Get-AzAccessToken -ResourceUrl "https://graph.microsoft.com/").Token
+#  $urj = "https://graph.microsoft.com/v1.0/applications/${{ variables.erdSonObiectid }}/addPassword"
+
+#  $headers = @{
+
+#  "Authorization" = "Bearer $token"
+
+#  "Content-Type" = "application/json"
+
+#}
+#$body = @{
+
+#"password Credential" = @{"displayName" = "${{ variables. Provider Service Principal SecretName}}"
+#{
+
+#$body = @{"passwordCredential" = @{
+#"displayName" = "${{ variables.ProviderService Principal SecretName }}"
+
+# "startDateTime" = (Get-Date). ToUniversalTime().ToString()
+
+# "endDateTime" = (Get-Date).AddDays(365).ToUniversalTime().ToString()
+
+# }| ConvertTo-Json -Compress
+
+#$result = Invoke-RestMethod -Uri Şuri-Method 'Post' -Headers $headers-Body
+#Sbody-UseBasicParsing
+
+#$secretText = $($result).secretText
+# SendDateTime = $($result).endDateTime
+
+# $expires = Get-Date-Date SendDateTime -Format "yyyy-MM-ddTHH:mm:ssZ"
+
+# Write-Host "##ysoltask.setvariable variable=secretText.isSecret=true; $secretText"
+
+# Write-Host "##yso[task.setvariable variable=endDateTime; $expires"
+
+#- task: AzureCLI@2
+
+#enabled: true
+
+#displayName: Add secret to Key Vault
+
+# inputs:
+
+# azureSubscription: ${{ variables.serviceConnectionName }}
+
+# script Type: 'bash'
+
+# scriptLocation: 'inlineScript'
+
+# inline Script: |
+
+# az keyvault secret set \
+# -name ${{ variables.ProviderService PrincipalSecretName }}\
+# -vault-name ${{ variables.keyVaultName }} \
+
+#--value "$(secretText)" \
+
+#--expires "$(endDateTime)"
+
+#-${{ if in(parameters.targetEnvironment, 'acceptance','production') }):
+#${{ if in(parameters.Action, 'Create/Store Provider Secret') }}:
+
+#${{ if in(parameters.targetEnvironment, 'acceptance','production') }}:
+
+#${{ if in (parameters, Action, 'Create/Store Provider Secret') }}:
+
+# - stage:
+
+# "${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecret Verification'
+
+# dependson: '${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecret'
+
+# condition: or(failed(),
+# succeeded ('${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecret'))
+
+#displayName: ${{ parameters.targetEnvironment }}-Verification
+
+# jobs:
+
+#
+
+#
+
+#
+
+#- deployment: Deployment Verification. Approval
+
+# displayName: Verification Approval
+
+# environment: 'BATR3-${{ parameters.targetEnvironment }}-approval'
+
+#- template: /generic/servicenow/close-change-stage.yml@pipetemplates
+
+# parameters:
+
+# close status: 'Success'
+
+#depends on job: 'DeploymentVerification Approval'
+
+# - stage:
+
+# '${{ parameters.targetEnvironment }}_CreateandStoreProviderClientSecret_close_failed_servicenow_change'
+
+# dependsOn:
+
+# # - ${{ parameters.targetEnvironment }} CreateandStoreProviderClientSecret Verification
+
+condition:
+  or(and(not(succeeded('${{ parameters.targetEnvironment}} CreateandStoreProviderClientSecr etVerification')), eq(variables['System.StageAttempt' ], 1)), canceled())
+
+# displayName: Close-failed-ServiceNow-change
