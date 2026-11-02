@@ -1,0 +1,334 @@
+
+{
+  "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "expiryThresholdDays": {
+      "type": "int",
+      "defaultValue": 30
+    },
+    "senderMailbox": {
+      "type": "string"
+    },
+    "alertRecipient": {
+      "type": "string"
+    },
+    "managedIdentityResourceId": {
+      "type": "string"
+    }
+  },
+  "triggers": {
+    "Recurrence": {
+      "type": "Recurrence",
+      "recurrence": {
+        "frequency": "Day",
+        "interval": 1,
+        "timeZone": "India Standard Time",
+        "schedule": {
+          "hours": [8],
+          "minutes": [0]
+        }
+      }
+    }
+  },
+  "actions": {
+    "Initialize_NextLink": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "nextLink",
+            "type": "string",
+            "value": "https://graph.microsoft.com/v1.0/applications?$select=id,appId,displayName,passwordCredentials,keyCredentials&$top=999"
+          }
+        ]
+      },
+      "runAfter": {}
+    },
+    "Initialize_Applications": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "applications",
+            "type": "array",
+            "value": []
+          }
+        ]
+      },
+      "runAfter": {
+        "Initialize_NextLink": ["Succeeded"]
+      }
+    },
+    "Initialize_ExpiringCredentials": {
+      "type": "InitializeVariable",
+      "inputs": {
+        "variables": [
+          {
+            "name": "expiringCredentials",
+            "type": "array",
+            "value": []
+          }
+        ]
+      },
+      "runAfter": {
+        "Initialize_Applications": ["Succeeded"]
+      }
+    },
+    "Get_All_Applications": {
+      "type": "Until",
+      "expression": "@equals(variables('nextLink'), '')",
+      "limit": {
+        "count": 100,
+        "timeout": "PT1H"
+      },
+      "actions": {
+        "Get_Applications_Page": {
+          "type": "Http",
+          "inputs": {
+            "method": "GET",
+            "uri": "@variables('nextLink')",
+            "authentication": {
+              "type": "ManagedServiceIdentity",
+              "identity": "@parameters('managedIdentityResourceId')",
+              "audience": "https://graph.microsoft.com"
+            }
+          },
+          "runAfter": {}
+        },
+        "Append_Applications": {
+          "type": "Foreach",
+          "foreach": "@body('Get_Applications_Page')?['value']",
+          "operationOptions": "Sequential",
+          "actions": {
+            "Append_Application": {
+              "type": "AppendToArrayVariable",
+              "inputs": {
+                "name": "applications",
+                "value": "@item()"
+              },
+              "runAfter": {}
+            }
+          },
+          "runAfter": {
+            "Get_Applications_Page": ["Succeeded"]
+          }
+        },
+        "Set_NextLink": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "nextLink",
+            "value": "@coalesce(body('Get_Applications_Page')?['@odata.nextLink'], '')"
+          },
+          "runAfter": {
+            "Append_Applications": ["Succeeded"]
+          }
+        }
+      },
+      "runAfter": {
+        "Initialize_ExpiringCredentials": ["Succeeded"]
+      }
+    },
+    "For_Each_Application": {
+      "type": "Foreach",
+      "foreach": "@variables('applications')",
+      "operationOptions": "Sequential",
+      "actions": {
+        "For_Each_Secret": {
+          "type": "Foreach",
+          "foreach": "@items('For_Each_Application')?['passwordCredentials']",
+          "operationOptions": "Sequential",
+          "actions": {
+            "Check_Secret_Expiry": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "not": {
+                      "equals": [
+                        "@items('For_Each_Secret')?['endDateTime']",
+                        null
+                      ]
+                    }
+                  },
+                  {
+                    "lessOrEquals": [
+                      "@ticks(items('For_Each_Secret')?['endDateTime'])",
+                      "@ticks(addDays(utcNow(), parameters('expiryThresholdDays')))"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Append_Expiring_Secret": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "expiringCredentials",
+                    "value": {
+                      "applicationName": "@items('For_Each_Application')?['displayName']",
+                      "applicationId": "@items('For_Each_Application')?['appId']",
+                      "credentialType": "Client Secret",
+                      "credentialName": "@items('For_Each_Secret')?['displayName']",
+                      "keyId": "@items('For_Each_Secret')?['keyId']",
+                      "expiryDate": "@items('For_Each_Secret')?['endDateTime']",
+                      "daysRemaining": "@div(sub(ticks(items('For_Each_Secret')?['endDateTime']),ticks(utcNow())),864000000000)"
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {}
+            }
+          },
+          "runAfter": {}
+        },
+        "For_Each_Certificate": {
+          "type": "Foreach",
+          "foreach": "@items('For_Each_Application')?['keyCredentials']",
+          "operationOptions": "Sequential",
+          "actions": {
+            "Check_Certificate_Expiry": {
+              "type": "If",
+              "expression": {
+                "and": [
+                  {
+                    "not": {
+                      "equals": [
+                        "@items('For_Each_Certificate')?['endDateTime']",
+                        null
+                      ]
+                    }
+                  },
+                  {
+                    "lessOrEquals": [
+                      "@ticks(items('For_Each_Certificate')?['endDateTime'])",
+                      "@ticks(addDays(utcNow(), parameters('expiryThresholdDays')))"
+                    ]
+                  }
+                ]
+              },
+              "actions": {
+                "Append_Expiring_Certificate": {
+                  "type": "AppendToArrayVariable",
+                  "inputs": {
+                    "name": "expiringCredentials",
+                    "value": {
+                      "applicationName": "@items('For_Each_Application')?['displayName']",
+                      "applicationId": "@items('For_Each_Application')?['appId']",
+                      "credentialType": "Certificate",
+                      "credentialName": "@items('For_Each_Certificate')?['displayName']",
+                      "keyId": "@items('For_Each_Certificate')?['keyId']",
+                      "expiryDate": "@items('For_Each_Certificate')?['endDateTime']",
+                      "daysRemaining": "@div(sub(ticks(items('For_Each_Certificate')?['endDateTime']),ticks(utcNow())),864000000000)"
+                    }
+                  },
+                  "runAfter": {}
+                }
+              },
+              "else": {
+                "actions": {}
+              },
+              "runAfter": {}
+            }
+          },
+          "runAfter": {
+            "For_Each_Secret": ["Succeeded"]
+          }
+        }
+      },
+      "runAfter": {
+        "Get_All_Applications": ["Succeeded"]
+      }
+    },
+    "Check_Expiring_Credentials": {
+      "type": "If",
+      "expression": {
+        "greater": [
+          "@length(variables('expiringCredentials'))",
+          0
+        ]
+      },
+      "actions": {
+        "Create_HTML_Table": {
+          "type": "Table",
+          "inputs": {
+            "from": "@variables('expiringCredentials')",
+            "format": "HTML",
+            "columns": [
+              {
+                "header": "Application",
+                "value": "@item()?['applicationName']"
+              },
+              {
+                "header": "Client ID",
+                "value": "@item()?['applicationId']"
+              },
+              {
+                "header": "Credential Type",
+                "value": "@item()?['credentialType']"
+              },
+              {
+                "header": "Credential Name",
+                "value": "@item()?['credentialName']"
+              },
+              {
+                "header": "Expiry Date",
+                "value": "@item()?['expiryDate']"
+              },
+              {
+                "header": "Days Remaining",
+                "value": "@item()?['daysRemaining']"
+              }
+            ]
+          },
+          "runAfter": {}
+        },
+        "Send_Expiry_Notification": {
+          "type": "Http",
+          "inputs": {
+            "method": "POST",
+            "uri": "@concat('https://graph.microsoft.com/v1.0/users/',parameters('senderMailbox'),'/sendMail')",
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "authentication": {
+              "type": "ManagedServiceIdentity",
+              "identity": "@parameters('managedIdentityResourceId')",
+              "audience": "https://graph.microsoft.com"
+            },
+            "body": {
+              "message": {
+                "subject": "@concat('Entra ID Credential Expiry Alert - ',string(length(variables('expiringCredentials'))),' credential(s)')",
+                "body": {
+                  "contentType": "HTML",
+                  "content": "@concat('<html><body><h2>Entra ID Credential Expiry Report</h2><p>The following credentials are expired or will expire within ',string(parameters('expiryThresholdDays')),' days.</p>',body('Create_HTML_Table'),'<p>Please coordinate with the application owners to rotate the credentials.</p></body></html>')"
+                },
+                "toRecipients": [
+                  {
+                    "emailAddress": {
+                      "address": "@parameters('alertRecipient')"
+                    }
+                  }
+                ]
+              },
+              "saveToSentItems": true
+            }
+          },
+          "runAfter": {
+            "Create_HTML_Table": ["Succeeded"]
+          }
+        }
+      },
+      "else": {
+        "actions": {}
+      },
+      "runAfter": {
+        "For_Each_Application": ["Succeeded"]
+      }
+    }
+  },
+  "outputs": {}
+}
