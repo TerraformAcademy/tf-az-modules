@@ -15,10 +15,10 @@ resource logicAppIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023
   name: 'id-entra-secret-monitor'
 }
 
-// Workflow definition from JSON
-var workflowDefinition = loadJsonContent(
-  'workflow.json'
-)
+// Workflow definition from JSON - Commented for default empty definition 
+// var workflowDefinition = loadJsonContent(
+//   'workflow.json'
+// )
 // Deploy reusable Logic App module
 module logicApp '../modules/logic-app.bicep' = {
   name: 'deploy-${logicAppName}'
@@ -26,21 +26,21 @@ module logicApp '../modules/logic-app.bicep' = {
     name: logicAppName
     location: location
 
-    definition: workflowDefinition
+    // definition: workflowDefinition // Not passing to create empty 
 
     workflowParameters: {
-      expiryThresholdDays: {
-        value: expiryThresholdDays
-      }
-      senderMailbox: {
-        value: senderMailbox
-      }
-      alertRecipient: {
-        value: alertRecipient
-      }
-      managedIdentityResourceId: {
-        value: logicAppIdentity.id
-      }
+      // expiryThresholdDays: {
+      //   value: expiryThresholdDays
+      // }
+      // senderMailbox: {
+      //   value: senderMailbox
+      // }
+      // alertRecipient: {
+      //   value: alertRecipient
+      // }
+      // managedIdentityResourceId: {
+      //   value: logicAppIdentity.id
+      // }
     }
 
     userAssignedIdentities: {

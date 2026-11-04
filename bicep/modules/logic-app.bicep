@@ -6,7 +6,7 @@ param name string
 param location string = resourceGroup().location
 
 @description('Logic App workflow definition')
-param definition object
+param definition object = {} // defaults to null 
 
 @description('Workflow parameter values')
 param workflowParameters object = {}
